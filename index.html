@@ -521,7 +521,7 @@
                     </thead>
                     <tbody id="tableBody">
                         <tr>
-                            <td colspan="6" class="empty-state">
+                            <td colspan="9" class="empty-state">
                                 <div class="empty-state-icon">📭</div>
                                 <p>No data yet. Add entries from the Entry Form tab to see them here.</p>
                             </td>
@@ -543,6 +543,64 @@
             '4b': ['St. Joseph', 'St. Anthony', 'St. Peter', 'Dominic Savio', 'Unknown'],
             'Other': ['Unknown']
         };
+
+        // ===== MONGODB API FUNCTIONS =====
+        async function saveToMongoDB(entry) {
+            try {
+                const response = await fetch('/.netlify/functions/save-entry', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...entry, userId: currentUser })
+                });
+                const data = await response.json();
+                console.log('MongoDB save response:', data);
+                if (data.success) {
+                    showMessage('✓ Saved to MongoDB database', 'success');
+                    return true;
+                } else {
+                    showMessage('MongoDB Error: ' + data.error, 'error');
+                    localStorage.setItem(`bandSalesData_${currentUser}`, JSON.stringify(entries[currentUser]));
+                    return false;
+                }
+            } catch (error) {
+                console.error('MongoDB save failed:', error);
+                showMessage('Network error - using localStorage', 'error');
+                localStorage.setItem(`bandSalesData_${currentUser}`, JSON.stringify(entries[currentUser]));
+                return false;
+            }
+        }
+
+        async function loadFromMongoDB() {
+            try {
+                const response = await fetch(`/.netlify/functions/get-entries?userId=${currentUser}`);
+                const data = await response.json();
+                console.log('MongoDB load response:', data);
+                if (data.success && data.data) {
+                    entries[currentUser] = data.data;
+                    updateViewTab();
+                    showMessage(`Loaded ${data.count} entries from MongoDB`, 'success');
+                    return true;
+                }
+            } catch (error) {
+                console.error('MongoDB load failed:', error);
+            }
+            return false;
+        }
+
+        async function deleteFromMongoDB(mongoId) {
+            try {
+                const response = await fetch(`/.netlify/functions/delete-entry?id=${mongoId}`, { method: 'DELETE' });
+                const data = await response.json();
+                console.log('MongoDB delete response:', data);
+                if (data.success) {
+                    showMessage('Deleted from MongoDB', 'success');
+                    return true;
+                }
+            } catch (error) {
+                console.error('MongoDB delete failed:', error);
+            }
+            return false;
+        }
 
         // Initialize data from localStorage
         let entries = {};
@@ -593,7 +651,6 @@
 
         // Switch tabs
         function switchTab(tabName) {
-            // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
@@ -601,18 +658,16 @@
                 btn.classList.remove('active');
             });
 
-            // Show selected tab
             document.getElementById(tabName).classList.add('active');
             event.target.classList.add('active');
 
-            // Update view tab data
             if (tabName === 'view') {
                 updateViewTab();
             }
         }
 
         // Add entry
-        function addEntry() {
+        async function addEntry() {
             const name = document.getElementById('name').value.trim();
             const zone = document.getElementById('zone').value;
             const community = document.getElementById('community').value;
@@ -622,7 +677,6 @@
             const paymentMethod = document.getElementById('paymentMethod').value;
             const messageDiv = document.getElementById('message');
 
-            // Validation
             if (!name || !zone || !community || !bands || !startBand) {
                 showMessage('Please fill in all fields', 'error');
                 return;
@@ -638,7 +692,6 @@
                 return;
             }
 
-            // Create entry object
             const totalAmount = parseInt(bands) * pricePerBand;
             const entry = {
                 id: Date.now(),
@@ -659,24 +712,19 @@
                 })
             };
 
-            // Add to array for current user
             entries[currentUser].push(entry);
+            const saved = await saveToMongoDB(entry);
+            
+            if (!saved) {
+                localStorage.setItem(`bandSalesData_${currentUser}`, JSON.stringify(entries[currentUser]));
+            }
 
-            // Save to localStorage
-            localStorage.setItem(`bandSalesData_${currentUser}`, JSON.stringify(entries[currentUser]));
-
-            // Show success message
             showMessage(`✓ Entry added successfully for ${name}`, 'success');
-
-            // Reset payment status
             paymentConfirmed = false;
             document.getElementById('paymentStatus').style.display = 'none';
-
-            // Clear form
             clearForm();
         }
 
-        // Clear form
         function updateCommunityDropdown() {
             const zone = document.getElementById('zone').value;
             const communitySelect = document.getElementById('community');
@@ -708,7 +756,6 @@
             updatePaymentDisplay();
         }
 
-        // Update payment display
         function updatePaymentDisplay() {
             const bands = parseInt(document.getElementById('bands').value) || 0;
             const pricePerBand = parseFloat(document.getElementById('pricePerBand').value) || 0;
@@ -725,18 +772,15 @@
             }
         }
 
-        // Generate UPI QR Code
         function generateUpiQr(amount) {
-            const upiId = 'yourname@upi';  // Change this to your UPI ID
+            const upiId = 'yourname@upi';
             const payeeName = 'Event Organizer';
             const transactionRef = 'EB' + Date.now();
             
             const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount.toFixed(2)}&cu=INR&tn=EventBands&tr=${transactionRef}`;
             
-            // Clear previous QR
             document.getElementById('qrcode').innerHTML = '';
             
-            // Generate new QR
             new QRCode(document.getElementById('qrcode'), {
                 text: upiUrl,
                 width: 200,
@@ -749,7 +793,6 @@
             document.getElementById('qrAmount').textContent = '₹' + amount.toFixed(2);
         }
 
-        // Confirm payment
         function confirmPayment() {
             paymentConfirmed = true;
             document.getElementById('paymentStatus').style.display = 'block';
@@ -758,7 +801,6 @@
             }, 300);
         }
 
-        // Show message
         function showMessage(text, type) {
             const messageDiv = document.getElementById('message');
             messageDiv.textContent = text;
@@ -768,7 +810,6 @@
             }, 4000);
         }
 
-        // Update view tab
         function updateViewTab() {
             const tableBody = document.getElementById('tableBody');
             const totalEntries = document.getElementById('totalEntries');
@@ -779,7 +820,7 @@
             if (userEntries.length === 0) {
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="7" class="empty-state">
+                        <td colspan="9" class="empty-state">
                             <div class="empty-state-icon">📭</div>
                             <p>No data yet. Add entries from the Entry Form tab to see them here.</p>
                         </td>
@@ -790,7 +831,6 @@
                 return;
             }
 
-            // Generate table rows
             tableBody.innerHTML = userEntries.map((entry, index) => `
                 <tr>
                     <td>${index + 1}</td>
@@ -809,15 +849,17 @@
                 </tr>
             `).join('');
 
-            // Update stats
             totalEntries.textContent = userEntries.length;
             const totalBandsCount = userEntries.reduce((sum, entry) => sum + entry.bands, 0);
             totalBands.textContent = totalBandsCount;
         }
 
-        // Delete entry
-        function deleteEntry(id) {
+        async function deleteEntry(id) {
             if (confirm('Are you sure you want to delete this entry?')) {
+                const entry = entries[currentUser].find(e => e.id == id);
+                if (entry && entry._id) {
+                    await deleteFromMongoDB(entry._id);
+                }
                 entries[currentUser] = entries[currentUser].filter(entry => entry.id !== id);
                 localStorage.setItem(`bandSalesData_${currentUser}`, JSON.stringify(entries[currentUser]));
                 updateViewTab();
@@ -825,7 +867,6 @@
             }
         }
 
-        // Download Excel
         function downloadExcel() {
             const userEntries = entries[currentUser] || [];
             if (userEntries.length === 0) {
@@ -834,7 +875,6 @@
             }
 
             try {
-                // Prepare data for Excel
                 const exportData = userEntries.map((entry, index) => ({
                     'Serial No': index + 1,
                     'Customer Name': entry.name,
@@ -847,31 +887,25 @@
                     'Date & Time': entry.timestamp
                 }));
 
-                // Create worksheet
                 const worksheet = XLSX.utils.json_to_sheet(exportData);
-                
-                // Set column widths
                 worksheet['!cols'] = [
-                    { wch: 10 },  // Serial No
-                    { wch: 25 },  // Customer Name
-                    { wch: 12 },  // Zone
-                    { wch: 20 },  // Community
-                    { wch: 15 },  // Starting Band
-                    { wch: 15 },  // Number of Bands
-                    { wch: 12 },  // Amount
-                    { wch: 18 },  // Payment Method
-                    { wch: 25 }   // Date & Time
+                    { wch: 10 },
+                    { wch: 25 },
+                    { wch: 12 },
+                    { wch: 20 },
+                    { wch: 15 },
+                    { wch: 15 },
+                    { wch: 12 },
+                    { wch: 18 },
+                    { wch: 25 }
                 ];
 
-                // Create workbook
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, 'Sales Data');
 
-                // Generate filename with current date and user
                 const currentDate = new Date().toISOString().split('T')[0];
                 const filename = `EventBandSales_${currentUser}_${currentDate}.xlsx`;
 
-                // Write file
                 if (XLSX && XLSX.writeFile) {
                     XLSX.writeFile(workbook, filename);
                     showMessage(`✓ Excel file "${filename}" downloaded successfully`, 'success');
@@ -884,7 +918,6 @@
             }
         }
 
-        // Clear all data
         function clearAllData() {
             if (confirm('Are you sure you want to delete ALL entries for ' + currentUser + '? This cannot be undone.')) {
                 entries[currentUser] = [];
@@ -894,7 +927,6 @@
             }
         }
 
-        // Escape HTML to prevent XSS
         function escapeHtml(text) {
             const map = {
                 '&': '&amp;',
@@ -906,10 +938,12 @@
             return text.replace(/[&<>"']/g, m => map[m]);
         }
 
-        // Initialize on page load
-        window.addEventListener('load', () => {
+        window.addEventListener('load', async () => {
             initializeData();
-            updateViewTab();
+            const loaded = await loadFromMongoDB();
+            if (!loaded) {
+                updateViewTab();
+            }
         });
     </script>
 </body>
