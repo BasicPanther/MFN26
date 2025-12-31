@@ -1,0 +1,86 @@
+# ✅ Complete Setup Checklist
+
+## Files Created (4 items)
+
+### 1. **netlify.toml**
+   - Netlify configuration file
+   - Tells Netlify where your functions are
+   - Location: Root folder
+
+### 2. **package.json**
+   - Node.js dependencies
+   - Includes `mongodb` driver
+   - Location: Root folder
+
+### 3. **Backend Functions (3 files in netlify/functions/)**
+
+   a) **save-entry.js**
+      - Saves band entries to MongoDB
+      - Called when user clicks "Add Entry"
+   
+   b) **get-entries.js**
+      - Fetches all entries for a user from MongoDB
+      - Called when loading data
+   
+   c) **delete-entry.js**
+      - Deletes an entry from MongoDB
+      - Called when user clicks "Delete"
+
+### 4. **index.html**
+   - Your existing Event Band Sales app
+   - Needs small updates (see Step 6 in README)
+
+### 5. **README.md**
+   - Complete setup instructions
+   - Troubleshooting guide
+
+---
+
+## 📦 What to Download/Copy
+
+Create a new folder on your computer called `event-band-sales/` and add:
+
+```
+event-band-sales/
+├── netlify.toml
+├── package.json
+├── README.md
+├── index.html
+└── netlify/
+    └── functions/
+        ├── save-entry.js
+        ├── get-entries.js
+        └── delete-entry.js
+```
+
+---
+
+## 🎯 Deployment Steps (in order)
+
+1. **Create GitHub repo** and push these files
+2. **MongoDB Atlas**: Create cluster + get connection string
+3. **Netlify**: Connect GitHub repo
+4. **Environment Variables**: Add 3 variables in Netlify dashboard
+5. **Update index.html**: Add the 3 API functions from README Step 6
+6. **Test**: Open your Netlify URL and add data
+
+---
+
+## ✨ Key Points
+
+- **No cost**: Netlify free tier + MongoDB Atlas free tier (5GB storage)
+- **Real-time sync**: All devices see latest data
+- **Secure**: MongoDB URI stored in Netlify environment variables
+- **Scalable**: Can handle thousands of entries
+
+---
+
+## 🔗 Quick Links
+
+- MongoDB Atlas: https://mongodb.com/atlas
+- Netlify: https://netlify.com
+- Netlify Functions Docs: https://docs.netlify.com/functions/overview/
+
+---
+
+**Ready to start? Follow the README.md file step-by-step!**

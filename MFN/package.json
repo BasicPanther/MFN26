@@ -1,0 +1,16 @@
+{
+  "name": "event-band-sales",
+  "version": "1.0.0",
+  "description": "Event Band Sales Desk with MongoDB integration",
+  "main": "index.html",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'Build step'"
+  },
+  "dependencies": {
+    "mongodb": "^6.3.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  }
+}
