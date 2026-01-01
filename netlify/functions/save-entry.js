@@ -1,4 +1,4 @@
-import { MongoClient, ObjectId } from 'mongodb';
+import { MongoClient } from 'mongodb';
 
 const mongoUri = process.env.MONGODB_URI;
 const dbName = process.env.MONGODB_DB || 'event_bands_db';
@@ -43,18 +43,6 @@ export default async (request) => {
   try {
     const body = await request.json();
 
-    // Expect:
-    // {
-    //   userId: 'abc',
-    //   bands: [105,106,107],   // each band number
-    //   name: 'John',
-    //   zone: '3B',
-    //   community: 'Zone 3B - ...',
-    //   amountPerBand: 50,
-    //   edited: true/false,
-    //   entryId?: '...'  (for updating existing logical entry – optional)
-    // }
-
     const {
       userId,
       bands,
@@ -66,7 +54,14 @@ export default async (request) => {
       entryId,
     } = body || {};
 
-    if (!userId || !Array.isArray(bands) || bands.length === 0 || !name || !zone || !community) {
+    if (
+      !userId ||
+      !Array.isArray(bands) ||
+      bands.length === 0 ||
+      !name ||
+      !zone ||
+      !community
+    ) {
       return new Response(
         JSON.stringify({ success: false, error: 'Missing required fields' }),
         {
@@ -85,7 +80,7 @@ export default async (request) => {
 
     const now = new Date();
 
-    // Each band is a separate document (like your localStorage version)
+    // Create a document for each band
     const docs = bands.map((bandNo) => ({
       userId,
       bandNo,
@@ -99,7 +94,7 @@ export default async (request) => {
       updatedAt: now,
     }));
 
-    // If updating an existing logical entry group, remove old docs for that group first
+    // If updating an existing entry group, delete old docs first
     if (entryId) {
       await collection.deleteMany({ userId, entryGroupId: entryId });
     }
