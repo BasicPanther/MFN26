@@ -1,8 +1,12 @@
 [build]
-  command = "npm run build"
-  publish = "."
+  command = "npm install"
   functions = "netlify/functions"
+  publish = "."
+
+[env.production]
+  variables = { ENVIRONMENT = "production" }
 
 [[redirects]]
-  from = "/api/save-entry"
-  to = "/.netlify/functions/save
+  from = "/*"
+  to = "/index.html"
+  status = 200
