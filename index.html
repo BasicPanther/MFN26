@@ -617,6 +617,47 @@
             opacity: 1;
         }
 
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--color-success);
+            color: white;
+            padding: var(--space-16) var(--space-24);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 2000;
+            animation: slideIn 0.3s ease-out;
+            max-width: 400px;
+            font-weight: var(--font-weight-semibold);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
+
+        .toast.hide {
+            animation: slideOut 0.3s ease-out;
+        }
+
         @media (max-width: 768px) {
             .form-grid {
                 grid-template-columns: 1fr;
@@ -880,14 +921,15 @@
     <script>
         const API_BASE = '/api';
 
-        // Communities data
+        // Communities data with "Unknown" option
         const communities = {
             '1': [
                 'Morning Star',
                 'St. Andrew',
                 'Holy Trinity',
                 'St. Ann & St. Michael',
-                'Divya Jyothi'
+                'Divya Jyothi',
+                'Unknown'
             ],
             '2': [
                 'Our Lady of Velankani',
@@ -895,11 +937,13 @@
                 'St. John',
                 'Holy Cross',
                 'St. Sebastian',
-                'Immaculate Conception'
+                'Immaculate Conception',
+                'Unknown'
             ],
             '3A': [
                 'Divine Angel',
-                'Ave Maria'
+                'Ave Maria',
+                'Unknown'
             ],
             '3B': [
                 'Our Lady of Rosary',
@@ -908,22 +952,25 @@
                 'St. Thomas',
                 'St. Francis Xavier',
                 'St. Anthony',
-                'Holy Cross'
+                'Holy Cross',
+                'Unknown'
             ],
             '4A': [
                 'Gonsalo Gracia',
                 'Servers',
                 'St. Luke',
                 'St. Theresa',
-                'Don Bosco'
+                'Don Bosco',
+                'Unknown'
             ],
             '4B': [
                 'St. Joseph',
                 'St. Anthony',
                 'St. Peter',
-                'Dominic Savio'
+                'Dominic Savio',
+                'Unknown'
             ],
-            'Other': ['Other']
+            'Other': ['Other', 'Unknown']
         };
 
         // Admin credentials
@@ -933,18 +980,46 @@
         // State management
         let currentUser = null;
         let isAdmin = false;
+        let users = {};
 
-        // Users list stored locally (for UI); entries live in MongoDB
-        let users = JSON.parse(localStorage.getItem('bandUsers')) || {
-            [ADMIN_USERNAME]: { isAdmin: true }
-        };
+        // Toast function
+        function showToast(message, duration = 3000) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
 
-        function saveUsers() {
-            localStorage.setItem('bandUsers', JSON.stringify(users));
+            setTimeout(() => {
+                toast.classList.add('hide');
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+
+        // Load users from API
+        async function loadUsers() {
+            try {
+                const res = await fetch(`${API_BASE}/manage-users`);
+                const result = await res.json();
+                if (!res.ok || !result.success) throw new Error(result.error);
+
+                users = {};
+                result.data.forEach(u => {
+                    users[u.username] = { isAdmin: u.isAdmin, _id: u._id };
+                });
+                
+                // Always ensure admin exists locally
+                if (!users['admin']) {
+                    users['admin'] = { isAdmin: true };
+                }
+            } catch (err) {
+                console.error('Error loading users:', err);
+            }
         }
 
         // Initialize app
-        function initApp() {
+        async function initApp() {
+            await loadUsers();
+            
             const userSelectionScreen = document.getElementById('userSelectionScreen');
             const mainApp = document.getElementById('mainApp');
 
@@ -1002,7 +1077,7 @@
                 document.getElementById('adminPassword').value = '';
                 closeAdminModal();
                 initApp();
-                loadEntries(); // load all or admin-specific later
+                loadEntries();
             } else {
                 document.getElementById('adminPassword').value = '';
                 alert('Incorrect password. Please try again.');
@@ -1138,6 +1213,13 @@
                 return;
             }
 
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+
+            // Disable button to prevent double-submit
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+
             const name = document.getElementById('name').value.trim();
             const zone = document.getElementById('zone').value;
             const community = document.getElementById('community').value;
@@ -1145,6 +1227,8 @@
 
             if (!name || !zone || !community || !numBands) {
                 alert('Please fill all required fields');
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
                 return;
             }
 
@@ -1192,11 +1276,17 @@
                 document.getElementById('totalAmount').textContent = '0';
                 document.getElementById('paymentBreakdown').textContent = '0 bands × ₹50/band = ₹0';
 
-                alert(`Successfully added ${bandNumbers.length} band${bandNumbers.length > 1 ? 's' : ''}`);
+                // Show toast notification
+                showToast(`✓ Successfully added ${bandNumbers.length} band${bandNumbers.length > 1 ? 's' : ''}`);
+                
                 loadEntries();
             } catch (err) {
                 console.error(err);
-                alert('Error saving entry: ' + err.message);
+                showToast('❌ Error saving entry: ' + err.message, 4000);
+            } finally {
+                // Re-enable button
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
             }
         }
 
@@ -1215,7 +1305,7 @@
                 updateDataTable(entries);
             } catch (err) {
                 console.error(err);
-                alert('Error loading data: ' + err.message);
+                showToast('Error loading data: ' + err.message, 4000);
             }
         }
 
@@ -1250,21 +1340,21 @@
                         second: '2-digit'
                     });
 
-            return `
-                <tr>
-                    <td>#${entry.bandNo}</td>
-                    <td>${entry.name}</td>
-                    <td>${entry.zone}</td>
-                    <td>${entry.community}</td>
-                    <td>₹${entry.amount}</td>
-                    <td>${displayDate}</td>
-                    <td>
-                        <div class="action-btns">
-                            ${!isAdmin ? `<button class="btn btn-sm btn-danger" onclick="deleteEntryMongo('${entry._id}')">Delete</button>` : ''}
-                        </div>
-                    </td>
-                </tr>
-            `;
+                return `
+                    <tr>
+                        <td>#${entry.bandNo}</td>
+                        <td>${entry.name}</td>
+                        <td>${entry.zone}</td>
+                        <td>${entry.community}</td>
+                        <td>₹${entry.amount}</td>
+                        <td>${displayDate}</td>
+                        <td>
+                            <div class="action-btns">
+                                ${!isAdmin ? `<button class="btn btn-sm btn-danger" onclick="deleteEntryMongo('${entry._id}')">Delete</button>` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
             }).join('');
 
             updateSummary(sortedEntries);
@@ -1291,10 +1381,11 @@
                 if (!res.ok || !result.success) {
                     throw new Error(result.error || 'Failed to delete entry');
                 }
+                showToast('✓ Entry deleted successfully');
                 loadEntries();
             } catch (err) {
                 console.error(err);
-                alert('Error deleting entry: ' + err.message);
+                showToast('Error deleting entry: ' + err.message, 4000);
             }
         }
 
@@ -1408,13 +1499,7 @@
             alert('Downloading as CSV format. For native XLSX, consider using a dedicated export tool.');
         }
 
-        function showCreateUserModal() {
-            document.getElementById('createUserModal').classList.add('active');
-            document.getElementById('newUsername').value = '';
-            document.getElementById('newUsername').focus();
-        }
-
-        function createUser() {
+        async function createUser() {
             const username = document.getElementById('newUsername').value.trim();
 
             if (!username) {
@@ -1427,11 +1512,50 @@
                 return;
             }
 
-            users[username] = { isAdmin: false };
-            saveUsers();
-            closeModal('createUserModal');
-            alert(`User '${username}' created successfully`);
-            displayUserSelection();
+            try {
+                const res = await fetch(`${API_BASE}/manage-users`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username }),
+                });
+
+                const result = await res.json();
+                if (!res.ok || !result.success) throw new Error(result.error);
+
+                users[username] = { isAdmin: false, _id: result.id };
+                closeModal('createUserModal');
+                showToast(`✓ User '${username}' created successfully`);
+                await loadUsers();
+                displayUserSelection();
+            } catch (err) {
+                showToast('Error creating user: ' + err.message, 4000);
+            }
+        }
+
+        async function deleteUser(username) {
+            if (!confirm(`Delete user '${username}' and all their data?`)) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/manage-users?username=${encodeURIComponent(username)}`, {
+                    method: 'DELETE',
+                });
+
+                const result = await res.json();
+                if (!res.ok || !result.success) throw new Error(result.error);
+
+                delete users[username];
+                await loadUsers();
+                showManageUsersModal();
+                showToast(`✓ User '${username}' deleted`);
+            } catch (err) {
+                showToast('Error deleting user: ' + err.message, 4000);
+            }
+        }
+
+        function showCreateUserModal() {
+            document.getElementById('createUserModal').classList.add('active');
+            document.getElementById('newUsername').value = '';
+            document.getElementById('newUsername').focus();
         }
 
         function showManageUsersModal() {
@@ -1456,23 +1580,6 @@
             document.getElementById('manageUsersModal').classList.add('active');
         }
 
-        async function deleteUser(username) {
-            if (!confirm(`Delete user '${username}' and all their data?`)) return;
-
-            delete users[username];
-            saveUsers();
-
-            try {
-                await fetch(`${API_BASE}/delete-entry?userId=${encodeURIComponent(username)}`, {
-                    method: 'DELETE'
-                });
-            } catch (e) {
-                console.warn('Error clearing user data in DB (optional):', e);
-            }
-
-            showManageUsersModal();
-        }
-
         async function clearAllData() {
             if (!confirm('Are you sure? This will delete ALL data and CANNOT be undone.')) return;
             if (!confirm('This is permanent. Are you absolutely sure?')) return;
@@ -1488,8 +1595,7 @@
             users = {
                 [ADMIN_USERNAME]: { isAdmin: true }
             };
-            saveUsers();
-            alert('All data cleared');
+            showToast('✓ All data cleared');
             switchUser();
         }
 
