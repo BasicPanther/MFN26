@@ -401,6 +401,7 @@
             border-radius: var(--radius-lg);
             border: 1px solid var(--color-card-border);
             overflow: hidden;
+            overflow-x: auto;
         }
 
         table {
@@ -564,7 +565,7 @@
 
         .bands-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
             gap: var(--space-12);
             margin: var(--space-16) 0;
         }
@@ -575,10 +576,9 @@
             border-radius: var(--radius-md);
             padding: var(--space-12);
             text-align: center;
-            cursor: pointer;
             transition: all var(--duration-normal);
             position: relative;
-            min-height: 80px;
+            min-height: 100px;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -591,30 +591,29 @@
             border-color: var(--color-primary-hover);
         }
 
-        .band-block-number {
+        .band-input {
+            padding: var(--space-8) var(--space-12);
             font-size: var(--font-size-2xl);
             font-weight: var(--font-weight-bold);
             color: var(--color-primary);
-            margin: 0 0 var(--space-4) 0;
+            border: none;
+            border-bottom: 2px solid var(--color-primary);
+            background: transparent;
+            text-align: center;
+            width: 100%;
+            font-family: var(--font-family-base);
+            transition: all var(--duration-fast);
+        }
+
+        .band-input:focus {
+            outline: none;
+            border-bottom-color: var(--color-primary-hover);
         }
 
         .band-block-label {
             font-size: var(--font-size-xs);
             color: var(--color-text-secondary);
-            margin: 0;
-        }
-
-        .band-block-edit-icon {
-            position: absolute;
-            top: var(--space-4);
-            right: var(--space-4);
-            font-size: 1rem;
-            opacity: 0;
-            transition: opacity var(--duration-fast);
-        }
-
-        .band-block:hover .band-block-edit-icon {
-            opacity: 1;
+            margin: var(--space-8) 0 0 0;
         }
 
         .toast {
@@ -670,6 +669,10 @@
             .action-btns {
                 flex-direction: column;
             }
+
+            .bands-grid {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            }
         }
     </style>
 </head>
@@ -707,7 +710,7 @@
                         
                         <div class="form-group" style="margin-bottom: var(--space-20);">
                             <label class="form-label required">Current Band No.</label>
-                            <input type="number" id="currentBandNo" class="form-control" placeholder="e.g., 101" value="101">
+                            <input type="number" id="currentBandNo" class="form-control" placeholder="e.g., 101">
                         </div>
 
                         <form id="entryForm">
@@ -747,7 +750,7 @@
                             </div>
 
                             <div>
-                                <p class="bands-display-title" style="margin-bottom: var(--space-12); font-weight: var(--font-weight-semibold);">Bands to be allocated</p>
+                                <p class="bands-display-title" style="margin-bottom: var(--space-12); font-weight: var(--font-weight-semibold);">Bands to be allocated (click to edit)</p>
                                 <div class="bands-grid" id="bandsGrid"></div>
                                 <p id="bandRangeText" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin: var(--space-12) 0 0 0; text-align: center;"></p>
                             </div>
@@ -797,13 +800,14 @@
                                     <th>Zone</th>
                                     <th>Community</th>
                                     <th>Amount (₹)</th>
-                                    <th>Date & Time</th>
+                                    <th>Date</th>
+                                    <th>Time</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody id="dataTableBody">
                                 <tr class="empty-state">
-                                    <td colspan="7">
+                                    <td colspan="8">
                                         <div class="empty-state-icon">📋</div>
                                         <p>No data yet. Add entries from the Entry Form tab to see them here.</p>
                                     </td>
@@ -995,6 +999,27 @@
             }, duration);
         }
 
+        // Format date/time in IST
+        function formatDateIST(date) {
+            const d = new Date(date);
+            return {
+                date: d.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+                time: d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+            };
+        }
+
+        // Save last band number to localStorage
+        function saveLastBandNumber(bandNo) {
+            localStorage.setItem(`lastBandNo_${currentUser}`, bandNo.toString());
+        }
+
+        // Load last band number from localStorage
+        function loadLastBandNumber() {
+            if (!currentUser) return '';
+            const saved = localStorage.getItem(`lastBandNo_${currentUser}`);
+            return saved || '';
+        }
+
         // Load users from API
         async function loadUsers() {
             try {
@@ -1030,6 +1055,8 @@
             } else {
                 userSelectionScreen.style.display = 'none';
                 mainApp.style.display = 'block';
+                // Load last band number for this user
+                document.getElementById('currentBandNo').value = loadLastBandNumber();
                 updateUI();
             }
         }
@@ -1155,7 +1182,7 @@
         }
 
         function displayBandBlocks(count) {
-            const currentBandNo = parseInt(document.getElementById('currentBandNo').value) || 101;
+            const currentBandNo = parseInt(document.getElementById('currentBandNo').value) || 0;
             const bandsGrid = document.getElementById('bandsGrid');
             bandsGrid.innerHTML = '';
 
@@ -1163,45 +1190,45 @@
                 const bandNum = currentBandNo + i;
                 const block = document.createElement('div');
                 block.className = 'band-block';
-                block.dataset.original = bandNum;
                 block.innerHTML = `
-                    <span class="band-block-edit-icon">✎</span>
-                    <p class="band-block-number">${bandNum}</p>
-                    <p class="band-block-label">Click to edit</p>
+                    <input 
+                        type="number" 
+                        class="band-input" 
+                        value="${bandNum}" 
+                        data-index="${i}"
+                        onchange="updateBandNumber(this)"
+                    >
+                    <p class="band-block-label">Band #</p>
                 `;
-                block.onclick = () => editBandBlock(block);
                 bandsGrid.appendChild(block);
             }
             updatePendingBands();
         }
 
-        function editBandBlock(block) {
-            const oldNum = parseInt(block.querySelector('.band-block-number').textContent);
-            const currentInput = prompt(`Edit Band #${oldNum}. Enter band number:`, oldNum);
-            
-            if (currentInput === null) return;
-
-            const newBandNum = parseInt(currentInput);
-            if (isNaN(newBandNum)) {
-                alert('Please enter a valid band number');
+        function updateBandNumber(input) {
+            const newValue = parseInt(input.value);
+            if (isNaN(newValue)) {
+                alert('Please enter a valid number');
+                input.focus();
                 return;
             }
 
-            const allBands = document.querySelectorAll('.band-block-number');
-            const existingNumbers = Array.from(allBands).map(b => parseInt(b.textContent));
+            // Check for duplicates in current form
+            const allInputs = document.querySelectorAll('.band-input');
+            const values = Array.from(allInputs).map(i => parseInt(i.value));
             
-            if (existingNumbers.includes(newBandNum) && newBandNum !== oldNum) {
-                alert('This band number already exists in the allocation');
+            if (values.filter(v => v === newValue).length > 1) {
+                alert('This band number is already in this allocation');
+                input.focus();
                 return;
             }
 
-            block.querySelector('.band-block-number').textContent = newBandNum;
             updatePendingBands();
         }
 
         function updatePendingBands() {
-            const bandBlocks = document.querySelectorAll('.band-block-number');
-            const bandNumbers = Array.from(bandBlocks).map(b => parseInt(b.textContent));
+            const bandInputs = document.querySelectorAll('.band-input');
+            const bandNumbers = Array.from(bandInputs).map(b => parseInt(b.value));
             document.getElementById('pendingBandNumbers').value = JSON.stringify(bandNumbers);
         }
 
@@ -1215,8 +1242,6 @@
 
             const submitBtn = event.target.querySelector('button[type="submit"]');
             const originalText = submitBtn.textContent;
-
-            // Disable button to prevent double-submit
             submitBtn.disabled = true;
             submitBtn.textContent = 'Saving...';
 
@@ -1232,18 +1257,8 @@
                 return;
             }
 
-            let bandNumbers = [];
-            const pendingBands = JSON.parse(document.getElementById('pendingBandNumbers').value || '[]');
+            let bandNumbers = JSON.parse(document.getElementById('pendingBandNumbers').value || '[]');
             
-            if (pendingBands.length > 0) {
-                bandNumbers = pendingBands;
-            } else {
-                const currentBandNo = parseInt(document.getElementById('currentBandNo').value);
-                for (let i = 0; i < numBands; i++) {
-                    bandNumbers.push(currentBandNo + i);
-                }
-            }
-
             try {
                 const res = await fetch(`${API_BASE}/save-entry`, {
                     method: 'POST',
@@ -1254,19 +1269,27 @@
                         name,
                         zone,
                         community,
-                        amountPerBand: 50,
-                        edited: JSON.stringify(bandNumbers) !== JSON.stringify(
-                            bandNumbers.slice().sort((a,b)=>a-b)
-                        )
+                        amountPerBand: 50
                     })
                 });
 
                 const result = await res.json();
+                
+                // Handle duplicate bands error
+                if (res.status === 409) {
+                    const dupInfo = result.duplicateBands.map(d => `Band ${d.bandNo} (user: ${d.user})`).join(', ');
+                    showToast(`❌ Duplicate band(s): ${dupInfo}`, 5000);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                    return;
+                }
+
                 if (!res.ok || !result.success) {
                     throw new Error(result.error || 'Failed to save entry');
                 }
 
                 const maxBandNo = Math.max(...bandNumbers);
+                saveLastBandNumber(maxBandNo + 1);
                 document.getElementById('currentBandNo').value = maxBandNo + 1;
 
                 document.getElementById('entryForm').reset();
@@ -1276,15 +1299,12 @@
                 document.getElementById('totalAmount').textContent = '0';
                 document.getElementById('paymentBreakdown').textContent = '0 bands × ₹50/band = ₹0';
 
-                // Show toast notification
                 showToast(`✓ Successfully added ${bandNumbers.length} band${bandNumbers.length > 1 ? 's' : ''}`);
-                
                 loadEntries();
             } catch (err) {
                 console.error(err);
                 showToast('❌ Error saving entry: ' + err.message, 4000);
             } finally {
-                // Re-enable button
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalText;
             }
@@ -1315,7 +1335,7 @@
             if (!entries || entries.length === 0) {
                 tbody.innerHTML = `
                     <tr class="empty-state">
-                        <td colspan="7">
+                        <td colspan="8">
                             <div class="empty-state-icon">📋</div>
                             <p>No data yet. Add entries from the Entry Form tab to see them here.</p>
                         </td>
@@ -1328,17 +1348,7 @@
             const sortedEntries = [...entries].sort((a, b) => a.bandNo - b.bandNo);
 
             tbody.innerHTML = sortedEntries.map((entry) => {
-                const ts = entry.createdAt || entry.timestamp;
-                const displayDate = typeof ts === 'string'
-                    ? ts
-                    : new Date(ts).toLocaleString('en-IN', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit'
-                    });
+                const formatted = formatDateIST(entry.createdAt || entry.timestamp);
 
                 return `
                     <tr>
@@ -1347,10 +1357,14 @@
                         <td>${entry.zone}</td>
                         <td>${entry.community}</td>
                         <td>₹${entry.amount}</td>
-                        <td>${displayDate}</td>
+                        <td>${formatted.date}</td>
+                        <td>${formatted.time}</td>
                         <td>
                             <div class="action-btns">
-                                ${!isAdmin ? `<button class="btn btn-sm btn-danger" onclick="deleteEntryMongo('${entry._id}')">Delete</button>` : ''}
+                                ${!isAdmin ? `
+                                    <button class="btn btn-sm btn-secondary" onclick="editEntry('${entry._id}', '${entry.bandNo}')">Edit</button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteEntryMongo('${entry._id}')">Delete</button>
+                                ` : ''}
                             </div>
                         </td>
                     </tr>
@@ -1368,6 +1382,38 @@
             document.getElementById('totalEntriesDisplay').textContent = totalEntries;
             document.getElementById('totalBandsSoldDisplay').textContent = totalBandsSold;
             document.getElementById('totalRevenueDisplay').textContent = totalRevenue;
+        }
+
+        async function editEntry(id, bandNo) {
+            const newBandNo = prompt(`Edit Band #${bandNo}. Enter new band number:`, bandNo);
+            if (newBandNo === null) return;
+
+            const newNum = parseInt(newBandNo);
+            if (isNaN(newNum)) {
+                alert('Please enter a valid number');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/update-entry`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, newBandNo: newNum })
+                });
+
+                const result = await res.json();
+                if (res.status === 409) {
+                    showToast(`❌ Band #${newNum} already exists`, 3000);
+                    return;
+                }
+
+                if (!res.ok || !result.success) throw new Error(result.error);
+                
+                showToast('✓ Entry updated successfully');
+                loadEntries();
+            } catch (err) {
+                showToast('Error updating entry: ' + err.message, 4000);
+            }
         }
 
         async function deleteEntryMongo(id) {
@@ -1452,36 +1498,16 @@
             let csv = '';
             
             if (includeUserName) {
-                csv = 'Band No.,Name,Zone,Community,Amount (₹),Date & Time,User\n';
+                csv = 'Band No.,Name,Zone,Community,Amount (₹),Date,Time,User\n';
                 entries.forEach(entry => {
-                    const ts = entry.createdAt || entry.timestamp;
-                    const displayDate = typeof ts === 'string'
-                        ? ts
-                        : new Date(ts).toLocaleString('en-IN', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit'
-                        });
-                    csv += `${entry.bandNo},"${entry.name}",${entry.zone},"${entry.community}",${entry.amount},"${displayDate}",${entry.userId}\n`;
+                    const formatted = formatDateIST(entry.createdAt || entry.timestamp);
+                    csv += `${entry.bandNo},"${entry.name}",${entry.zone},"${entry.community}",${entry.amount},"${formatted.date}","${formatted.time}",${entry.userId}\n`;
                 });
             } else {
-                csv = 'Band No.,Name,Zone,Community,Amount (₹),Date & Time\n';
+                csv = 'Band No.,Name,Zone,Community,Amount (₹),Date,Time\n';
                 entries.forEach(entry => {
-                    const ts = entry.createdAt || entry.timestamp;
-                    const displayDate = typeof ts === 'string'
-                        ? ts
-                        : new Date(ts).toLocaleString('en-IN', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit'
-                        });
-                    csv += `${entry.bandNo},"${entry.name}",${entry.zone},"${entry.community}",${entry.amount},"${displayDate}"\n`;
+                    const formatted = formatDateIST(entry.createdAt || entry.timestamp);
+                    csv += `${entry.bandNo},"${entry.name}",${entry.zone},"${entry.community}",${entry.amount},"${formatted.date}","${formatted.time}"\n`;
                 });
             }
 
