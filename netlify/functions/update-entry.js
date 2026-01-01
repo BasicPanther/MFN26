@@ -31,10 +31,10 @@ export default async (request) => {
 
   try {
     const body = await request.json();
-    const { id, newBandNo } = body;
+    const { id, newBandNo, name, zone, community, amount } = body;
 
-    if (!id || !newBandNo) {
-      return new Response(JSON.stringify({ success: false, error: 'Missing fields' }), {
+    if (!id) {
+      return new Response(JSON.stringify({ success: false, error: 'Missing entry ID' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
       });
@@ -44,18 +44,30 @@ export default async (request) => {
     const db = client.db(dbName);
     const collection = db.collection(collectionName);
 
-    // Check if band number already exists
-    const existing = await collection.findOne({ _id: { $ne: new ObjectId(id) }, bandNo: newBandNo });
-    if (existing) {
-      return new Response(JSON.stringify({ success: false, error: 'Band number already exists' }), {
-        status: 409,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
+    // If band number is being changed, check if it already exists
+    if (newBandNo) {
+      const existing = await collection.findOne({ _id: { $ne: new ObjectId(id) }, bandNo: newBandNo });
+      if (existing) {
+        return new Response(JSON.stringify({ success: false, error: 'Band number already exists' }), {
+          status: 409,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
     }
+
+    // Build update object with only provided fields
+    const updateObj = {};
+    if (newBandNo) updateObj.bandNo = newBandNo;
+    if (name) updateObj.name = name;
+    if (zone) updateObj.zone = zone;
+    if (community) updateObj.community = community;
+    if (amount) updateObj.amount = amount;
+    
+    updateObj.updatedAt = new Date();
 
     const result = await collection.updateOne(
       { _id: new ObjectId(id) },
-      { $set: { bandNo: newBandNo, updatedAt: new Date() } }
+      { $set: updateObj }
     );
 
     return new Response(JSON.stringify({ success: true, modifiedCount: result.modifiedCount }), {

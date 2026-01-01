@@ -505,6 +505,14 @@
             width: 90%;
         }
 
+        .edit-modal-content {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--space-24);
+            max-width: 500px;
+            width: 90%;
+        }
+
         .modal-title {
             font-size: var(--font-size-xl);
             font-weight: var(--font-weight-bold);
@@ -515,6 +523,51 @@
             display: flex;
             gap: var(--space-12);
             margin-top: var(--space-20);
+        }
+
+        .modal-form-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: var(--space-16);
+            margin-bottom: var(--space-20);
+        }
+
+        .modal-form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-form-label {
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            margin-bottom: var(--space-6);
+            color: var(--color-text);
+        }
+
+        .modal-form-control {
+            padding: var(--space-8) var(--space-12);
+            font-size: var(--font-size-base);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-base);
+            background: var(--color-surface);
+            color: var(--color-text);
+            font-family: var(--font-family-base);
+            transition: all var(--duration-fast);
+        }
+
+        .modal-form-control:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px var(--color-focus-ring);
+        }
+
+        select.modal-form-control {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23134252' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right var(--space-12) center;
+            background-size: 16px;
+            padding-right: var(--space-32);
         }
 
         .admin-section {
@@ -922,6 +975,55 @@
         </div>
     </div>
 
+    <div id="editEntryModal" class="modal">
+        <div class="edit-modal-content">
+            <h2 class="modal-title">Edit Entry</h2>
+            
+            <div class="modal-form-grid">
+                <div class="modal-form-group">
+                    <label class="modal-form-label">Band No.</label>
+                    <input type="number" id="editBandNo" class="modal-form-control" placeholder="e.g., 101">
+                </div>
+
+                <div class="modal-form-group">
+                    <label class="modal-form-label">Name</label>
+                    <input type="text" id="editName" class="modal-form-control" placeholder="Enter name">
+                </div>
+
+                <div class="modal-form-group">
+                    <label class="modal-form-label">Zone</label>
+                    <select id="editZone" class="modal-form-control" onchange="updateEditCommunities()">
+                        <option value="">Select a zone</option>
+                        <option value="1">Zone 1</option>
+                        <option value="2">Zone 2</option>
+                        <option value="3A">Zone 3 A</option>
+                        <option value="3B">Zone 3 B</option>
+                        <option value="4A">Zone 4 A</option>
+                        <option value="4B">Zone 4 B</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="modal-form-group">
+                    <label class="modal-form-label">Community</label>
+                    <select id="editCommunity" class="modal-form-control">
+                        <option value="">Select community</option>
+                    </select>
+                </div>
+
+                <div class="modal-form-group">
+                    <label class="modal-form-label">Amount (₹)</label>
+                    <input type="number" id="editAmount" class="modal-form-control" placeholder="e.g., 50">
+                </div>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="btn btn-primary" onclick="saveEditedEntry()">Save Changes</button>
+                <button class="btn btn-secondary" onclick="closeModal('editEntryModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_BASE = '/api';
 
@@ -985,6 +1087,7 @@
         let currentUser = null;
         let isAdmin = false;
         let users = {};
+        let currentEditingEntryId = null;
 
         // Toast function
         function showToast(message, duration = 3000) {
@@ -1155,6 +1258,21 @@
         function updateCommunities() {
             const zone = document.getElementById('zone').value;
             const communitySelect = document.getElementById('community');
+            communitySelect.innerHTML = '<option value="">Select community</option>';
+
+            if (zone && communities[zone]) {
+                communities[zone].forEach(community => {
+                    const option = document.createElement('option');
+                    option.value = `Zone ${zone} - ${community}`;
+                    option.textContent = `Zone ${zone} - ${community}`;
+                    communitySelect.appendChild(option);
+                });
+            }
+        }
+
+        function updateEditCommunities() {
+            const zone = document.getElementById('editZone').value;
+            const communitySelect = document.getElementById('editCommunity');
             communitySelect.innerHTML = '<option value="">Select community</option>';
 
             if (zone && communities[zone]) {
@@ -1362,7 +1480,7 @@
                         <td>
                             <div class="action-btns">
                                 ${!isAdmin ? `
-                                    <button class="btn btn-sm btn-secondary" onclick="editEntry('${entry._id}', '${entry.bandNo}')">Edit</button>
+                                    <button class="btn btn-sm btn-secondary" onclick="editEntry('${entry._id}', '${entry.bandNo}', '${entry.name}', '${entry.zone}', '${entry.community}', '${entry.amount}')">Edit</button>
                                     <button class="btn btn-sm btn-danger" onclick="deleteEntryMongo('${entry._id}')">Delete</button>
                                 ` : ''}
                             </div>
@@ -1384,13 +1502,34 @@
             document.getElementById('totalRevenueDisplay').textContent = totalRevenue;
         }
 
-        async function editEntry(id, bandNo) {
-            const newBandNo = prompt(`Edit Band #${bandNo}. Enter new band number:`, bandNo);
-            if (newBandNo === null) return;
+        async function editEntry(id, bandNo, name, zone, community, amount) {
+            currentEditingEntryId = id;
+            
+            document.getElementById('editBandNo').value = bandNo;
+            document.getElementById('editName').value = name;
+            document.getElementById('editZone').value = zone.split(' - ')[0]; // Extract zone number
+            document.getElementById('editAmount').value = amount;
+            
+            updateEditCommunities();
+            
+            // Set community after communities are loaded
+            setTimeout(() => {
+                document.getElementById('editCommunity').value = community;
+            }, 100);
+            
+            document.getElementById('editEntryModal').classList.add('active');
+            document.getElementById('editName').focus();
+        }
 
-            const newNum = parseInt(newBandNo);
-            if (isNaN(newNum)) {
-                alert('Please enter a valid number');
+        async function saveEditedEntry() {
+            const bandNo = parseInt(document.getElementById('editBandNo').value);
+            const name = document.getElementById('editName').value.trim();
+            const zone = document.getElementById('editZone').value;
+            const community = document.getElementById('editCommunity').value;
+            const amount = parseInt(document.getElementById('editAmount').value);
+
+            if (!bandNo || !name || !zone || !community || !amount) {
+                alert('Please fill all fields');
                 return;
             }
 
@@ -1398,17 +1537,25 @@
                 const res = await fetch(`${API_BASE}/update-entry`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id, newBandNo: newNum })
+                    body: JSON.stringify({ 
+                        id: currentEditingEntryId, 
+                        newBandNo: bandNo,
+                        name,
+                        zone,
+                        community,
+                        amount
+                    })
                 });
 
                 const result = await res.json();
                 if (res.status === 409) {
-                    showToast(`❌ Band #${newNum} already exists`, 3000);
+                    showToast(`❌ Band #${bandNo} already exists`, 3000);
                     return;
                 }
 
                 if (!res.ok || !result.success) throw new Error(result.error);
                 
+                closeModal('editEntryModal');
                 showToast('✓ Entry updated successfully');
                 loadEntries();
             } catch (err) {
