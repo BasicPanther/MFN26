@@ -840,8 +840,8 @@
                     </div>
 
                     <div style="margin-bottom: var(--space-20);">
-                        <button class="btn btn-primary" onclick="downloadData('user')">📥 Download My Data (XLSX)</button>
-                        <button class="btn btn-secondary" onclick="downloadData('user', 'csv')" style="margin-left: var(--space-12);">📥 Download CSV</button>
+                        <button class="btn btn-primary" id="downloadXLSXBtn" onclick="downloadData(isAdmin ? 'all' : 'user')">📥 Download My Data (XLSX)</button>
+                        <button class="btn btn-secondary" id="downloadCSVBtn" onclick="downloadData(isAdmin ? 'all' : 'user', 'csv')" style="margin-left: var(--space-12);">📥 Download CSV</button>
                     </div>
 
                     <div class="table-container">
@@ -855,12 +855,13 @@
                                     <th>Amount (₹)</th>
                                     <th>Date</th>
                                     <th>Time</th>
+                                    <th id="userHeader" style="display: none;">User</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody id="dataTableBody">
                                 <tr class="empty-state">
-                                    <td colspan="8">
+                                    <td colspan="9">
                                         <div class="empty-state-icon">📋</div>
                                         <p>No data yet. Add entries from the Entry Form tab to see them here.</p>
                                     </td>
@@ -904,7 +905,7 @@
                                         <div class="settings-item-title">Download All Data</div>
                                         <div class="settings-item-desc">Export all users' data with user names</div>
                                     </div>
-                                    <button class="btn btn-primary" onclick="downloadData('all', 'xlsx')">📥 Export XLSX</button>
+                                    <button class="btn btn-primary" onclick="downloadAllData('xlsx')">📥 Export XLSX</button>
                                 </div>
 
                                 <div class="settings-item">
@@ -912,7 +913,7 @@
                                         <div class="settings-item-title">Download CSV</div>
                                         <div class="settings-item-desc">Export all data as CSV format</div>
                                     </div>
-                                    <button class="btn btn-primary" onclick="downloadData('all', 'csv')">📥 Export CSV</button>
+                                    <button class="btn btn-primary" onclick="downloadAllData('csv')">📥 Export CSV</button>
                                 </div>
                             </div>
                         </div>
@@ -1449,11 +1450,19 @@
 
         function updateDataTable(entries) {
             const tbody = document.getElementById('dataTableBody');
+            const userHeader = document.getElementById('userHeader');
+            
+            // Show/hide user header based on admin status
+            if (isAdmin) {
+                userHeader.style.display = 'table-cell';
+            } else {
+                userHeader.style.display = 'none';
+            }
             
             if (!entries || entries.length === 0) {
                 tbody.innerHTML = `
                     <tr class="empty-state">
-                        <td colspan="8">
+                        <td colspan="${isAdmin ? 9 : 8}">
                             <div class="empty-state-icon">📋</div>
                             <p>No data yet. Add entries from the Entry Form tab to see them here.</p>
                         </td>
@@ -1467,6 +1476,7 @@
 
             tbody.innerHTML = sortedEntries.map((entry) => {
                 const formatted = formatDateIST(entry.createdAt || entry.timestamp);
+                const userColumn = isAdmin ? `<td>${entry.userId}</td>` : '';
 
                 return `
                     <tr>
@@ -1477,6 +1487,7 @@
                         <td>₹${entry.amount}</td>
                         <td>${formatted.date}</td>
                         <td>${formatted.time}</td>
+                        ${userColumn}
                         <td>
                             <div class="action-btns">
                                 ${!isAdmin ? `
@@ -1591,13 +1602,15 @@
         }
 
         async function downloadUserData(format) {
-            if (!currentUser) {
+            const userParam = isAdmin ? 'all' : currentUser;
+            
+            if (!isAdmin && !currentUser) {
                 alert('Select a user first');
                 return;
             }
 
             try {
-                const res = await fetch(`${API_BASE}/get-entries?userId=${encodeURIComponent(currentUser)}`);
+                const res = await fetch(`${API_BASE}/get-entries?userId=${encodeURIComponent(userParam)}`);
                 const result = await res.json();
                 if (!res.ok || !result.success) throw new Error(result.error || 'Failed to fetch data');
 
@@ -1608,12 +1621,12 @@
                 }
 
                 if (format === 'csv') {
-                    downloadCSV(entries, `${currentUser}_bands.csv`);
+                    downloadCSV(entries, isAdmin ? 'all_bands_data.csv' : `${currentUser}_bands.csv`, isAdmin);
                 } else {
-                    downloadXLSX(entries, `${currentUser}_bands.xlsx`);
+                    downloadXLSX(entries, isAdmin ? 'all_bands_data.xlsx' : `${currentUser}_bands.xlsx`, isAdmin);
                 }
             } catch (err) {
-                alert('Download error: ' + err.message);
+                showToast('Download error: ' + err.message, 4000);
             }
         }
 
@@ -1637,7 +1650,7 @@
                     downloadXLSX(entries, 'all_bands_data.xlsx', true);
                 }
             } catch (err) {
-                alert('Download error: ' + err.message);
+                showToast('Download error: ' + err.message, 4000);
             }
         }
 
@@ -1648,23 +1661,29 @@
                 csv = 'Band No.,Name,Zone,Community,Amount (₹),Date,Time,User\n';
                 entries.forEach(entry => {
                     const formatted = formatDateIST(entry.createdAt || entry.timestamp);
-                    csv += `${entry.bandNo},"${entry.name}",${entry.zone},"${entry.community}",${entry.amount},"${formatted.date}","${formatted.time}",${entry.userId}\n`;
+                    const escapedName = entry.name.replace(/"/g, '""');
+                    const escapedCommunity = entry.community.replace(/"/g, '""');
+                    csv += `${entry.bandNo},"${escapedName}",${entry.zone},"${escapedCommunity}",${entry.amount},"${formatted.date}","${formatted.time}","${entry.userId}"\n`;
                 });
             } else {
                 csv = 'Band No.,Name,Zone,Community,Amount (₹),Date,Time\n';
                 entries.forEach(entry => {
                     const formatted = formatDateIST(entry.createdAt || entry.timestamp);
-                    csv += `${entry.bandNo},"${entry.name}",${entry.zone},"${entry.community}",${entry.amount},"${formatted.date}","${formatted.time}"\n`;
+                    const escapedName = entry.name.replace(/"/g, '""');
+                    const escapedCommunity = entry.community.replace(/"/g, '""');
+                    csv += `${entry.bandNo},"${escapedName}",${entry.zone},"${escapedCommunity}",${entry.amount},"${formatted.date}","${formatted.time}"\n`;
                 });
             }
 
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.click();
-            window.URL.revokeObjectURL(url);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         function downloadXLSX(entries, filename, includeUserName = false) {
