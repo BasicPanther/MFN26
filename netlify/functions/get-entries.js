@@ -42,7 +42,7 @@ export default async (request) => {
 
   try {
     const url = new URL(request.url);
-    const userId = url.searchParams.get('userId'); // if null and admin, you can pass ?userId=all
+    const userId = url.searchParams.get('userId');
 
     const client = await connectToDatabase();
     const db = client.db(dbName);
