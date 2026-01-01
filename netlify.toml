@@ -1,19 +1,8 @@
 [build]
   command = "npm run build"
+  publish = "."
   functions = "netlify/functions"
-  publish = "dist"
 
 [[redirects]]
   from = "/api/save-entry"
-  to = "/.netlify/functions/save-entry"
-  status = 200
-
-[[redirects]]
-  from = "/api/get-entries"
-  to = "/.netlify/functions/get-entries"
-  status = 200
-
-[[redirects]]
-  from = "/api/delete-entry"
-  to = "/.netlify/functions/delete-entry"
-  status = 200
+  to = "/.netlify/functions/save
