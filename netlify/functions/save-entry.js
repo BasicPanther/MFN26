@@ -90,12 +90,13 @@ export default async (request) => {
       }));
 
       const result = await collection.insertMany(entries);
+      const insertedIds = Object.values(result.insertedIds).map(id => id.toString());
 
       return new Response(
         JSON.stringify({
           success: true,
-          insertedCount: result.insertedIds.length,
-          ids: result.insertedIds.map(id => id.toString())
+          insertedCount: insertedIds.length,
+          ids: insertedIds
         }),
         {
           status: 200,

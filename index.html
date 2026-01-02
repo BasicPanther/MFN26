@@ -1748,10 +1748,8 @@
                         ${userColumn}
                         <td>
                             <div class="action-btns">
-                                ${!isAdmin ? `
-                                    <button class="btn btn-sm btn-secondary" onclick="editEntry('${entry._id}', '${entry.bandNo}', '${entry.name}', '${entry.zone}', '${entry.community}', '${entry.amount}')">Edit</button>
-                                    <button class="btn btn-sm btn-danger" onclick="deleteEntryMongo('${entry._id}')">Delete</button>
-                                ` : ''}
+                                <button class="btn btn-sm btn-secondary" onclick="editEntry('${entry._id}', '${entry.bandNo}', '${entry.name}', '${entry.zone}', '${entry.community}', '${entry.amount}')">Edit</button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteEntryMongo('${entry._id}')">Delete</button>
                             </div>
                         </td>
                     </tr>
