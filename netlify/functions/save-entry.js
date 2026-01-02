@@ -20,78 +20,120 @@ export default async (request) => {
       status: 200,
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+        'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
       },
     });
   }
 
-  if (request.method !== 'POST' && request.method !== 'PUT') {
+  if (request.method !== 'POST') {
     return new Response(
       JSON.stringify({ success: false, error: 'Method not allowed' }),
-      { status: 405, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      {
+        status: 405,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+      }
     );
   }
 
   try {
-    const body = await request.json();
-    const { userId, bands, name, zone, community, amountPerBand = 50, edited = false, entryId } = body || {};
-
-    if (!userId || !Array.isArray(bands) || bands.length === 0 || !name || !zone || !community) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Missing required fields' }),
-        { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
-      );
-    }
-
+    const body = await request.text();
+    const entry = JSON.parse(body);
+    
     const client = await connectToDatabase();
     const db = client.db(dbName);
     const collection = db.collection(collectionName);
 
-    // Check for duplicate band numbers across ALL users
-    const duplicates = await collection.find({ bandNo: { $in: bands } }).toArray();
-    if (duplicates.length > 0) {
-      const dupBands = duplicates.map(d => d.bandNo).join(', ');
+    // Check for duplicate band numbers
+    if (entry.bands && Array.isArray(entry.bands)) {
+      const duplicates = [];
+      
+      for (const bandNo of entry.bands) {
+        const existing = await collection.findOne({ bandNo });
+        if (existing) {
+          duplicates.push({
+            bandNo,
+            user: existing.userId
+          });
+        }
+      }
+
+      if (duplicates.length > 0) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Duplicate band numbers found',
+            duplicateBands: duplicates
+          }),
+          {
+            status: 409,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*',
+            },
+          }
+        );
+      }
+
+      // Insert entries for each band
+      const entries = entry.bands.map(bandNo => ({
+        bandNo,
+        name: entry.name,
+        zone: entry.zone,
+        community: entry.community,
+        amount: entry.amountPerBand || 50,
+        userId: entry.userId || 'user1',
+        createdAt: new Date(),
+      }));
+
+      const result = await collection.insertMany(entries);
+
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: `Band numbers already exist: ${dupBands}`,
-          duplicateBands: duplicates.map(d => ({ bandNo: d.bandNo, user: d.userId }))
+        JSON.stringify({
+          success: true,
+          insertedCount: result.insertedIds.length,
+          ids: result.insertedIds.map(id => id.toString())
         }),
-        { status: 409, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
       );
     }
 
-    const now = new Date();
-
-    const docs = bands.map((bandNo) => ({
-      userId,
-      bandNo,
-      name,
-      zone,
-      community,
-      amount: amountPerBand,
-      edited,
-      entryGroupId: entryId || null,
-      createdAt: now,
-      updatedAt: now,
-    }));
-
-    if (entryId) {
-      await collection.deleteMany({ userId, entryGroupId: entryId });
-    }
-
-    const result = await collection.insertMany(docs);
-
     return new Response(
-      JSON.stringify({ success: true, insertedCount: result.insertedCount }),
-      { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      JSON.stringify({
+        success: false,
+        error: 'Bands array is required'
+      }),
+      {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+      }
     );
   } catch (error) {
     console.error('Save error:', error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      JSON.stringify({
+        success: false,
+        error: error.message
+      }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+      }
     );
   }
 };

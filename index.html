@@ -301,41 +301,6 @@
             padding-right: var(--space-32);
         }
 
-        .bands-display-title {
-            font-size: var(--font-size-sm);
-            color: var(--color-text-secondary);
-            margin: 0 0 var(--space-8) 0;
-        }
-
-        .payment-section {
-            background: var(--color-secondary);
-            padding: var(--space-16);
-            border-radius: var(--radius-base);
-            margin: var(--space-20) 0;
-        }
-
-        .payment-title {
-            font-size: var(--font-size-base);
-            font-weight: var(--font-weight-semibold);
-            margin: 0 0 var(--space-12) 0;
-            display: flex;
-            align-items: center;
-            gap: var(--space-8);
-        }
-
-        .payment-amount {
-            font-size: var(--font-size-3xl);
-            font-weight: var(--font-weight-bold);
-            color: var(--color-primary);
-            margin: 0;
-        }
-
-        .payment-breakdown {
-            font-size: var(--font-size-sm);
-            color: var(--color-text-secondary);
-            margin-top: var(--space-8);
-        }
-
         .btn {
             padding: var(--space-12) var(--space-24);
             border: none;
@@ -710,6 +675,82 @@
             animation: slideOut 0.3s ease-out;
         }
 
+        .filter-section {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--space-20);
+            margin-bottom: var(--space-20);
+            border: 1px solid var(--color-card-border);
+        }
+
+        .filter-title {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-semibold);
+            margin: 0 0 var(--space-16) 0;
+            color: var(--color-primary);
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-12);
+            margin-bottom: var(--space-16);
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-label {
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            margin-bottom: var(--space-6);
+            color: var(--color-text);
+        }
+
+        .filter-control {
+            padding: var(--space-8) var(--space-12);
+            font-size: var(--font-size-sm);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-base);
+            background: var(--color-surface);
+            color: var(--color-text);
+            font-family: var(--font-family-base);
+            transition: all var(--duration-fast);
+        }
+
+        .filter-control:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px var(--color-focus-ring);
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: var(--space-12);
+        }
+
+        .results-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-16);
+            background: var(--color-secondary);
+            border-radius: var(--radius-base);
+            margin-bottom: var(--space-16);
+        }
+
+        .results-count {
+            font-weight: var(--font-weight-semibold);
+            color: var(--color-text);
+        }
+
+        .results-summary {
+            font-size: var(--font-size-sm);
+            color: var(--color-text-secondary);
+        }
+
         @media (max-width: 768px) {
             .form-grid {
                 grid-template-columns: 1fr;
@@ -725,6 +766,16 @@
 
             .bands-grid {
                 grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            }
+
+            .filter-buttons {
+                flex-direction: column;
+            }
+
+            .results-info {
+                flex-direction: column;
+                gap: var(--space-12);
+                text-align: center;
             }
         }
     </style>
@@ -808,10 +859,10 @@
                                 <p id="bandRangeText" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin: var(--space-12) 0 0 0; text-align: center;"></p>
                             </div>
 
-                            <div class="payment-section">
-                                <p class="payment-title">💰 Payment Details</p>
-                                <p class="payment-amount">₹<span id="totalAmount">0</span></p>
-                                <p class="payment-breakdown" id="paymentBreakdown">0 bands × ₹50/band = ₹0</p>
+                            <div class="payment-section" style="background: var(--color-secondary); padding: var(--space-16); border-radius: var(--radius-base); margin: var(--space-20) 0;">
+                                <p class="payment-title" style="font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); margin: 0 0 var(--space-12) 0; display: flex; align-items: center; gap: var(--space-8);">💰 Payment Details</p>
+                                <p class="payment-amount" style="font-size: var(--font-size-3xl); font-weight: var(--font-weight-bold); color: var(--color-primary); margin: 0;">₹<span id="totalAmount">0</span></p>
+                                <p class="payment-breakdown" id="paymentBreakdown" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-top: var(--space-8);">0 bands × ₹50/band = ₹0</p>
                             </div>
 
                             <div class="btn-group">
@@ -836,6 +887,56 @@
                         <div class="summary-card">
                             <p class="summary-card-value">₹<span id="totalRevenueDisplay">0</span></p>
                             <p class="summary-card-label">Total Revenue</p>
+                        </div>
+                    </div>
+
+                    <div class="filter-section">
+                        <h3 class="filter-title">🔍 Filter & Search</h3>
+                        <div class="filter-grid">
+                            <div class="filter-group">
+                                <label class="filter-label">Search by Name</label>
+                                <input type="text" id="searchName" class="filter-control" placeholder="Enter name..." onkeyup="applyFilters()">
+                            </div>
+
+                            <div class="filter-group">
+                                <label class="filter-label">Filter by Date</label>
+                                <input type="date" id="filterDate" class="filter-control" onchange="applyFilters()">
+                            </div>
+
+                            <div class="filter-group">
+                                <label class="filter-label">Start Time</label>
+                                <input type="time" id="filterTimeStart" class="filter-control" onchange="applyFilters()">
+                            </div>
+
+                            <div class="filter-group">
+                                <label class="filter-label">End Time</label>
+                                <input type="time" id="filterTimeEnd" class="filter-control" onchange="applyFilters()">
+                            </div>
+
+                            <div class="filter-group">
+                                <label class="filter-label">Sort By</label>
+                                <select id="sortBy" class="filter-control" onchange="applyFilters()">
+                                    <option value="band-asc">Band # (Low to High)</option>
+                                    <option value="band-desc">Band # (High to Low)</option>
+                                    <option value="date-newest">Date (Newest First)</option>
+                                    <option value="date-oldest">Date (Oldest First)</option>
+                                    <option value="name-asc">Name (A to Z)</option>
+                                    <option value="name-desc">Name (Z to A)</option>
+                                    <option value="amount-high">Amount (High to Low)</option>
+                                    <option value="amount-low">Amount (Low to High)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="filter-buttons">
+                            <button class="btn btn-primary" onclick="applyFilters()">🔄 Apply Filters</button>
+                            <button class="btn btn-secondary" onclick="resetFilters()">✕ Clear Filters</button>
+                        </div>
+                    </div>
+
+                    <div class="results-info">
+                        <div>
+                            <div class="results-count">Showing <span id="filteredCount">0</span> of <span id="totalCount">0</span> entries</div>
+                            <div class="results-summary" id="filterSummary"></div>
                         </div>
                     </div>
 
@@ -940,9 +1041,15 @@
     <div id="createUserModal" class="modal">
         <div class="modal-content">
             <h2 class="modal-title">Create New User</h2>
-            <div class="form-group">
-                <label class="form-label required">Username</label>
-                <input type="text" id="newUsername" class="form-control" placeholder="Enter username">
+            <div class="modal-form-grid">
+                <div class="modal-form-group">
+                    <label class="modal-form-label">Username</label>
+                    <input type="text" id="newUsername" class="modal-form-control" placeholder="Enter username">
+                </div>
+                <div class="modal-form-group">
+                    <label class="modal-form-label">Password</label>
+                    <input type="password" id="newPassword" class="modal-form-control" placeholder="Enter password">
+                </div>
             </div>
             <div class="modal-buttons">
                 <button class="btn btn-primary" onclick="createUser()">Create</button>
@@ -965,13 +1072,28 @@
         <div class="modal-content">
             <h2 class="modal-title">Admin Access Required</h2>
             <p style="margin-bottom: var(--space-16); color: var(--color-text-secondary);">Enter admin password to continue.</p>
-            <div class="form-group">
-                <label class="form-label required">Password</label>
-                <input type="password" id="adminPassword" class="form-control" placeholder="Enter password" autocomplete="off">
+            <div class="modal-form-group">
+                <label class="modal-form-label">Password</label>
+                <input type="password" id="adminPassword" class="modal-form-control" placeholder="Enter password" autocomplete="off">
             </div>
             <div class="modal-buttons">
                 <button class="btn btn-primary" onclick="verifyAdminPassword()">Verify</button>
                 <button class="btn btn-secondary" onclick="closeAdminModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="userPasswordModal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-title">Enter Password</h2>
+            <p style="margin-bottom: var(--space-16); color: var(--color-text-secondary);" id="userPasswordPrompt"></p>
+            <div class="modal-form-group">
+                <label class="modal-form-label">Password</label>
+                <input type="password" id="userPassword" class="modal-form-control" placeholder="Enter password" autocomplete="off">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-primary" onclick="verifyUserPassword()">Login</button>
+                <button class="btn btn-secondary" onclick="closeUserPasswordModal()">Cancel</button>
             </div>
         </div>
     </div>
@@ -1088,7 +1210,10 @@
         let currentUser = null;
         let isAdmin = false;
         let users = {};
+        let allEntries = [];
+        let filteredEntries = [];
         let currentEditingEntryId = null;
+        let pendingUserLogin = { username: null, password: null };
 
         // Toast function
         function showToast(message, duration = 3000) {
@@ -1133,12 +1258,12 @@
 
                 users = {};
                 result.data.forEach(u => {
-                    users[u.username] = { isAdmin: u.isAdmin, _id: u._id };
+                    users[u.username] = { isAdmin: u.isAdmin, password: u.password, _id: u._id };
                 });
                 
                 // Always ensure admin exists locally
                 if (!users['admin']) {
-                    users['admin'] = { isAdmin: true };
+                    users['admin'] = { isAdmin: true, password: ADMIN_PASSWORD };
                 }
             } catch (err) {
                 console.error('Error loading users:', err);
@@ -1193,10 +1318,12 @@
                 document.getElementById('adminPasswordModal').classList.add('active');
                 document.getElementById('adminPassword').focus();
             } else {
-                currentUser = username;
-                isAdmin = false;
-                initApp();
-                loadEntries();
+                // Show password modal for regular users
+                pendingUserLogin.username = username;
+                document.getElementById('userPasswordPrompt').textContent = `Enter password for "${username}"`;
+                document.getElementById('userPassword').value = '';
+                document.getElementById('userPasswordModal').classList.add('active');
+                document.getElementById('userPassword').focus();
             }
         }
 
@@ -1216,15 +1343,41 @@
             }
         }
 
+        function verifyUserPassword() {
+            const password = document.getElementById('userPassword').value;
+            const username = pendingUserLogin.username;
+            
+            if (users[username] && users[username].password === password) {
+                currentUser = username;
+                isAdmin = false;
+                document.getElementById('userPassword').value = '';
+                closeUserPasswordModal();
+                initApp();
+                loadEntries();
+            } else {
+                document.getElementById('userPassword').value = '';
+                alert('Incorrect password. Please try again.');
+                document.getElementById('userPassword').focus();
+            }
+        }
+
         function closeAdminModal() {
             document.getElementById('adminPasswordModal').classList.remove('active');
             document.getElementById('adminPassword').value = '';
+        }
+
+        function closeUserPasswordModal() {
+            document.getElementById('userPasswordModal').classList.remove('active');
+            document.getElementById('userPassword').value = '';
+            pendingUserLogin = { username: null, password: null };
         }
 
         function switchUser() {
             currentUser = null;
             isAdmin = false;
             closeAdminModal();
+            closeUserPasswordModal();
+            resetFilters();
             initApp();
         }
 
@@ -1440,12 +1593,119 @@
                 if (!res.ok || !result.success) {
                     throw new Error(result.error || 'Failed to load entries');
                 }
-                const entries = result.data || [];
-                updateDataTable(entries);
+                allEntries = result.data || [];
+                resetFilters();
+                applyFilters();
             } catch (err) {
                 console.error(err);
                 showToast('Error loading data: ' + err.message, 4000);
             }
+        }
+
+        function applyFilters() {
+            const searchName = document.getElementById('searchName').value.toLowerCase();
+            const filterDate = document.getElementById('filterDate').value;
+            const filterTimeStart = document.getElementById('filterTimeStart').value;
+            const filterTimeEnd = document.getElementById('filterTimeEnd').value;
+            const sortBy = document.getElementById('sortBy').value;
+
+            // Filter entries
+            filteredEntries = allEntries.filter(entry => {
+                // Search by name
+                if (searchName && !entry.name.toLowerCase().includes(searchName)) {
+                    return false;
+                }
+
+                // Filter by date
+                if (filterDate) {
+                    const entryDate = new Date(entry.createdAt).toLocaleDateString('en-CA');
+                    if (entryDate !== filterDate) {
+                        return false;
+                    }
+                }
+
+                // Filter by time range
+                if (filterTimeStart || filterTimeEnd) {
+                    const entryTime = new Date(entry.createdAt).toLocaleTimeString('en-GB', { hour12: false }).slice(0, 5);
+                    
+                    if (filterTimeStart && entryTime < filterTimeStart) {
+                        return false;
+                    }
+                    if (filterTimeEnd && entryTime > filterTimeEnd) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+
+            // Sort entries
+            switch (sortBy) {
+                case 'band-asc':
+                    filteredEntries.sort((a, b) => a.bandNo - b.bandNo);
+                    break;
+                case 'band-desc':
+                    filteredEntries.sort((a, b) => b.bandNo - a.bandNo);
+                    break;
+                case 'date-newest':
+                    filteredEntries.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                    break;
+                case 'date-oldest':
+                    filteredEntries.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+                    break;
+                case 'name-asc':
+                    filteredEntries.sort((a, b) => a.name.localeCompare(b.name));
+                    break;
+                case 'name-desc':
+                    filteredEntries.sort((a, b) => b.name.localeCompare(a.name));
+                    break;
+                case 'amount-high':
+                    filteredEntries.sort((a, b) => b.amount - a.amount);
+                    break;
+                case 'amount-low':
+                    filteredEntries.sort((a, b) => a.amount - b.amount);
+                    break;
+            }
+
+            updateDataTable(filteredEntries);
+            updateFilterSummary();
+        }
+
+        function resetFilters() {
+            document.getElementById('searchName').value = '';
+            document.getElementById('filterDate').value = '';
+            document.getElementById('filterTimeStart').value = '';
+            document.getElementById('filterTimeEnd').value = '';
+            document.getElementById('sortBy').value = 'band-asc';
+            filteredEntries = [...allEntries];
+            updateFilterSummary();
+        }
+
+        function updateFilterSummary() {
+            const searchName = document.getElementById('searchName').value;
+            const filterDate = document.getElementById('filterDate').value;
+            const filterTimeStart = document.getElementById('filterTimeStart').value;
+            const filterTimeEnd = document.getElementById('filterTimeEnd').value;
+
+            let summaryParts = [];
+            if (searchName) summaryParts.push(`Name: "${searchName}"`);
+            if (filterDate) summaryParts.push(`Date: ${filterDate}`);
+            if (filterTimeStart || filterTimeEnd) {
+                let timeRange = 'Time: ';
+                if (filterTimeStart && filterTimeEnd) {
+                    timeRange += `${filterTimeStart} - ${filterTimeEnd}`;
+                } else if (filterTimeStart) {
+                    timeRange += `From ${filterTimeStart}`;
+                } else {
+                    timeRange += `Until ${filterTimeEnd}`;
+                }
+                summaryParts.push(timeRange);
+            }
+
+            const summaryText = summaryParts.length > 0 ? `Filters: ${summaryParts.join(' | ')}` : '';
+            document.getElementById('filterSummary').textContent = summaryText;
+            document.getElementById('filteredCount').textContent = filteredEntries.length;
+            document.getElementById('totalCount').textContent = allEntries.length;
         }
 
         function updateDataTable(entries) {
@@ -1464,7 +1724,7 @@
                     <tr class="empty-state">
                         <td colspan="${isAdmin ? 9 : 8}">
                             <div class="empty-state-icon">📋</div>
-                            <p>No data yet. Add entries from the Entry Form tab to see them here.</p>
+                            <p>No data found. Try adjusting your filters.</p>
                         </td>
                     </tr>
                 `;
@@ -1472,9 +1732,7 @@
                 return;
             }
 
-            const sortedEntries = [...entries].sort((a, b) => a.bandNo - b.bandNo);
-
-            tbody.innerHTML = sortedEntries.map((entry) => {
+            tbody.innerHTML = entries.map((entry) => {
                 const formatted = formatDateIST(entry.createdAt || entry.timestamp);
                 const userColumn = isAdmin ? `<td>${entry.userId}</td>` : '';
 
@@ -1500,7 +1758,7 @@
                 `;
             }).join('');
 
-            updateSummary(sortedEntries);
+            updateSummary(allEntries);
         }
 
         function updateSummary(entries) {
@@ -1518,12 +1776,11 @@
             
             document.getElementById('editBandNo').value = bandNo;
             document.getElementById('editName').value = name;
-            document.getElementById('editZone').value = zone.split(' - ')[0]; // Extract zone number
+            document.getElementById('editZone').value = zone.split(' - ')[0];
             document.getElementById('editAmount').value = amount;
             
             updateEditCommunities();
             
-            // Set community after communities are loaded
             setTimeout(() => {
                 document.getElementById('editCommunity').value = community;
             }, 100);
@@ -1693,9 +1950,10 @@
 
         async function createUser() {
             const username = document.getElementById('newUsername').value.trim();
+            const password = document.getElementById('newPassword').value.trim();
 
-            if (!username) {
-                alert('Please enter a username');
+            if (!username || !password) {
+                alert('Please enter both username and password');
                 return;
             }
 
@@ -1708,13 +1966,13 @@
                 const res = await fetch(`${API_BASE}/manage-users`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username }),
+                    body: JSON.stringify({ username, password }),
                 });
 
                 const result = await res.json();
                 if (!res.ok || !result.success) throw new Error(result.error);
 
-                users[username] = { isAdmin: false, _id: result.id };
+                users[username] = { isAdmin: false, password, _id: result.id };
                 closeModal('createUserModal');
                 showToast(`✓ User '${username}' created successfully`);
                 await loadUsers();
@@ -1747,6 +2005,7 @@
         function showCreateUserModal() {
             document.getElementById('createUserModal').classList.add('active');
             document.getElementById('newUsername').value = '';
+            document.getElementById('newPassword').value = '';
             document.getElementById('newUsername').focus();
         }
 
@@ -1777,18 +2036,17 @@
             if (!confirm('This is permanent. Are you absolutely sure?')) return;
 
             try {
-                await fetch(`${API_BASE}/delete-entry?userId=all`, {
+                const res = await fetch(`${API_BASE}/delete-entry?userId=all`, {
                     method: 'DELETE'
                 });
-            } catch (e) {
-                console.warn('Error clearing DB (optional):', e);
-            }
+                const result = await res.json();
+                if (!res.ok || !result.success) throw new Error(result.error);
 
-            users = {
-                [ADMIN_USERNAME]: { isAdmin: true }
-            };
-            showToast('✓ All data cleared');
-            switchUser();
+                showToast('✓ All data cleared');
+                loadEntries();
+            } catch (err) {
+                showToast('Error clearing data: ' + err.message, 4000);
+            }
         }
 
         function closeModal(modalId) {
@@ -1802,7 +2060,7 @@
 
         // Close modals when clicking outside
         window.onclick = (event) => {
-            if (event.target.classList.contains('modal') && event.target.id !== 'adminPasswordModal') {
+            if (event.target.classList.contains('modal') && event.target.id !== 'adminPasswordModal' && event.target.id !== 'userPasswordModal') {
                 event.target.classList.remove('active');
             }
         };
@@ -1811,6 +2069,12 @@
             document.getElementById('adminPassword').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     verifyAdminPassword();
+                }
+            });
+
+            document.getElementById('userPassword').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    verifyUserPassword();
                 }
             });
 

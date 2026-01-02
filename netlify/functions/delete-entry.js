@@ -15,87 +15,104 @@ async function connectToDatabase() {
 }
 
 export default async (request) => {
-  // CORS preflight
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       status: 200,
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'DELETE,OPTIONS',
+        'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
       },
     });
   }
 
-  if (request.method !== 'DELETE') {
-    return new Response(
-      JSON.stringify({ success: false, error: 'Method not allowed' }),
-      {
-        status: 405,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-      }
-    );
-  }
-
   try {
     const url = new URL(request.url);
     const id = url.searchParams.get('id');
-    const bandNo = url.searchParams.get('bandNo');
     const userId = url.searchParams.get('userId');
-
-    if (!id && !bandNo) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Missing id or bandNo' }),
-        {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-          },
-        }
-      );
-    }
 
     const client = await connectToDatabase();
     const db = client.db(dbName);
     const collection = db.collection(collectionName);
 
-    let query;
-    if (id) {
-      query = { _id: new ObjectId(id) };
-    } else {
-      query = { bandNo: Number(bandNo) };
-      if (userId) query.userId = userId;
+    // Delete all entries if userId='all' (admin clear all)
+    if (userId === 'all') {
+      const result = await collection.deleteMany({});
+      return new Response(
+        JSON.stringify({
+          success: true,
+          deletedCount: result.deletedCount,
+          message: 'All entries deleted successfully'
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
     }
 
-    const result = await collection.deleteOne(query);
+    // Delete single entry by ID
+    if (!id) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'ID is required' }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
+    }
+
+    const result = await collection.deleteOne({ _id: new ObjectId(id) });
+
+    if (result.deletedCount === 0) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Entry not found'
+        }),
+        {
+          status: 404,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
         deletedCount: result.deletedCount,
+        message: 'Entry deleted successfully'
       }),
       {
         status: 200,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
+          'Access-Control-Allow-Origin': '*'
+        }
       }
     );
   } catch (error) {
     console.error('Delete error:', error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({
+        success: false,
+        error: error.message
+      }),
       {
         status: 500,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
+          'Access-Control-Allow-Origin': '*'
+        }
       }
     );
   }
