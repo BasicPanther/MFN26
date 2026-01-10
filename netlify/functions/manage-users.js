@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 
 const mongoUri = process.env.MONGODB_URI;
 const dbName = process.env.MONGODB_DB || 'event_bands_db';
@@ -21,7 +21,7 @@ export default async (request) => {
       status: 200,
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
+        'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS,PUT',
         'Access-Control-Allow-Headers': 'Content-Type',
       },
     });
@@ -32,10 +32,8 @@ export default async (request) => {
     const db = client.db(dbName);
     const usersCollection = db.collection(usersCollectionName);
 
-    // GET - Fetch all users
     if (request.method === 'GET') {
       const users = await usersCollection.find({}).toArray();
-      
       return new Response(
         JSON.stringify({
           success: true,
@@ -44,185 +42,63 @@ export default async (request) => {
             username: u.username,
             isAdmin: u.isAdmin,
             password: u.password,
+            role: u.role || 'Desk',
+            userZone: u.userZone || null,
             createdAt: u.createdAt
           }))
         }),
-        {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          }
-        }
+        { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
       );
     }
 
-    // POST - Create new user
     if (request.method === 'POST') {
       const body = await request.json();
-      const { username, password } = body;
+      const { username, password, role, userZone } = body;
 
-      if (!username || !password) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: 'Username and password are required'
-          }),
-          {
-            status: 400,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*'
-            }
-          }
-        );
-      }
+      if (!username) return new Response(JSON.stringify({ success: false, error: 'Username required' }), { status: 400 });
 
-      // Check if user already exists
       const existingUser = await usersCollection.findOne({ username });
-      if (existingUser) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: 'User already exists'
-          }),
-          {
-            status: 409,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*'
-            }
-          }
-        );
-      }
+      if (existingUser) return new Response(JSON.stringify({ success: false, error: 'Username already exists' }), { status: 409 });
 
-      // Create new user
       const result = await usersCollection.insertOne({
         username,
-        password,
+        password: password || 'olep@2026',
+        role: role || 'Desk',
+        userZone: userZone || null,
         isAdmin: false,
         createdAt: new Date()
       });
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          id: result.insertedId.toString(),
-          message: `User '${username}' created successfully`
-        }),
-        {
-          status: 201,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          }
-        }
-      );
+      return new Response(JSON.stringify({ success: true, id: result.insertedId }), { status: 201 });
     }
 
-    // DELETE - Remove user and their entries
+    if (request.method === 'PUT') {
+      const body = await request.json();
+      const { id, username, password, role, userZone } = body;
+
+      if (!id) return new Response(JSON.stringify({ success: false, error: 'ID required' }), { status: 400 });
+
+      const updateFields = { updatedAt: new Date() };
+      if (username) updateFields.username = username;
+      if (password) updateFields.password = password;
+      if (role) updateFields.role = role;
+      if (userZone !== undefined) updateFields.userZone = userZone;
+
+      await usersCollection.updateOne({ _id: new ObjectId(id) }, { $set: updateFields });
+      return new Response(JSON.stringify({ success: true }), { status: 200 });
+    }
+
     if (request.method === 'DELETE') {
       const url = new URL(request.url);
       const username = url.searchParams.get('username');
+      if (username === 'admin') return new Response(JSON.stringify({ success: false, error: 'Cannot delete admin' }), { status: 403 });
 
-      if (!username) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: 'Username is required'
-          }),
-          {
-            status: 400,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*'
-            }
-          }
-        );
-      }
-
-      // Prevent deletion of admin user
-      if (username === 'admin') {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: 'Cannot delete admin user'
-          }),
-          {
-            status: 403,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*'
-            }
-          }
-        );
-      }
-
-      // Delete user
-      const userResult = await usersCollection.deleteOne({ username });
-
-      // Delete all entries for this user
+      await usersCollection.deleteOne({ username });
       const entriesCollection = db.collection(entriesCollectionName);
       await entriesCollection.deleteMany({ userId: username });
 
-      if (userResult.deletedCount === 0) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: 'User not found'
-          }),
-          {
-            status: 404,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*'
-            }
-          }
-        );
-      }
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: `User '${username}' and their data deleted successfully`
-        }),
-        {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          }
-        }
-      );
+      return new Response(JSON.stringify({ success: true }), { status: 200 });
     }
-
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: 'Method not allowed'
-      }),
-      {
-        status: 405,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
-      }
-    );
   } catch (error) {
-    console.error('Manage users error:', error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message
-      }),
-      {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
-      }
-    );
+    return new Response(JSON.stringify({ success: false, error: error.message }), { status: 500 });
   }
 };
