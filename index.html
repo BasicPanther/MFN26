@@ -51,8 +51,9 @@
         td { padding: 12px; border-bottom: 1px solid #eee; font-size: 13px; }
 
         .bands-grid { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0; }
-        .band-block { border: 2px solid var(--color-teal); border-radius: 8px; padding: 10px; text-align: center; width: 100px; background: white; }
-        .band-num { font-size: 18px; font-weight: bold; color: var(--color-teal); }
+        .band-block { border: 2px solid var(--color-teal); border-radius: 8px; padding: 5px; text-align: center; width: 100px; background: white; }
+        .band-block input { width: 100%; border: none; text-align: center; font-size: 16px; font-weight: bold; color: var(--color-teal); outline: none; }
+        .band-block-label { font-size: 8px; font-weight: bold; color: #999; text-transform: uppercase; margin-top: 2px; }
 
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; }
         .modal.active { display: flex; }
@@ -67,9 +68,6 @@
         .stat-value { font-size: 28px; font-weight: 800; color: var(--color-teal); }
         
         .manage-row { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee; }
-        .manage-info { flex: 1; }
-        .manage-btns { display: flex; gap: 5px; }
-
         .admin-badge { background: #e0f2f1; color: #00796b; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; display: inline-block; margin-bottom: 4px; }
     </style>
 </head>
@@ -129,15 +127,16 @@
                                 <input type="number" id="qty" class="form-control" min="1" placeholder="Enter qty" oninput="updateBandPreview()">
                             </div>
                         </div>
+                        <p style="font-size:10px; font-weight:bold; color:#666; margin-bottom:10px;">BAND MAP (CLICK NUMBERS TO EDIT):</p>
                         <div id="bandsPreview" class="bands-grid"></div>
                         <div style="background: #13343b; color: white; padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; margin: 20px 0; align-items: center;">
                             <div>
-                                <div style="font-size: 10px; opacity: 0.7; font-weight: bold;">COLLECTION TOTAL</div>
+                                <div style="font-size: 10px; opacity: 0.7; font-weight: bold;">TOTAL DUE</div>
                                 <div id="qtySummary" style="font-size: 14px;">0 bands</div>
                             </div>
                             <div style="font-size: 28px; font-weight: bold; color: #4db6ac;">₹<span id="calcTotal">0</span></div>
                         </div>
-                        <button type="submit" class="btn btn-primary" style="width: 100%">Save Entry</button>
+                        <button type="submit" id="saveEntryBtn" class="btn btn-primary" style="width: 100%">Save Entry</button>
                     </form>
                 </div>
             </div>
@@ -162,8 +161,10 @@
                     </div>
                     <div id="adminFilters" style="display:none; border-top: 1px solid #eee; padding-top:15px; margin-top:10px;">
                         <div class="form-grid">
-                            <div class="form-group"><label class="form-label">Filter Category</label><select id="fCat" class="form-control" onchange="filterTable()"><option value="all">All</option><option value="Zone">Zone</option><option value="Desk">Desk</option><option value="Church Office">Office</option></select></div>
-                            <div class="form-group"><label class="form-label">Operator</label><select id="fOper" class="form-control" onchange="filterTable()"><option value="all">All Operators</option></select></div>
+                            <div class="form-group"><label class="form-label">Category</label><select id="fCat" class="form-control" onchange="handleAdminFilterChange()"><option value="all">All</option><option value="Zone">Zone</option><option value="Desk">Desk</option><option value="Church Office">Office</option></select></div>
+                            <div class="form-group"><label class="form-label">Zone Filter</label><select id="fZone" class="form-control" onchange="handleAdminFilterZoneChange()"><option value="all">All</option><option value="1">1</option><option value="2">2</option><option value="3A">3A</option><option value="3B">3B</option><option value="4A">4A</option><option value="4B">4B</option><option value="Other">Other</option></select></div>
+                            <div class="form-group"><label class="form-label">Community</label><select id="fComm" class="form-control" onchange="filterTable()"><option value="all">All</option></select></div>
+                            <div class="form-group"><label class="form-label">Operator</label><select id="fOper" class="form-control" onchange="filterTable()"><option value="all">All</option></select></div>
                         </div>
                     </div>
                     <div style="margin-top: 15px; display: flex; gap: 10px;">
@@ -181,13 +182,13 @@
 
             <div id="adminPage" class="page">
                 <div class="card">
-                    <h3>User Accounts</h3>
+                    <h3>User Profiles</h3>
                     <div style="display: flex; gap: 10px; margin-bottom: 20px;">
                         <button class="btn btn-primary" onclick="openModal('addUserModal')">Create New Profile</button>
                         <button class="btn btn-secondary" onclick="renderUserList()">Manage Users</button>
                     </div>
                     <hr style="opacity:0.1">
-                    <h3 style="color: var(--color-red)">System Actions</h3>
+                    <h3 style="color: var(--color-red)">Emergency System</h3>
                     <button class="btn btn-danger" onclick="clearDatabase()">Wipe Entries Database</button>
                 </div>
             </div>
@@ -198,11 +199,15 @@
 
     <div id="addUserModal" class="modal">
         <div class="modal-content">
-            <h2 style="margin-top:0">Create User</h2>
-            <div class="form-group"><label class="form-label">Category (Tag)</label><select id="newRole" class="form-control" onchange="handleRoleChange(this.value)"><option value="Desk">Desk</option><option value="Church Office">Office</option><option value="Zone">Zone</option></select></div>
-            <div id="zoneSubField" class="form-group" style="display:none"><label class="form-label">Select Zone Group</label><select id="newUserZone" class="form-control" onchange="populateCommunityUsernames(this.value)"></select></div>
+            <h2 style="margin-top:0">New Profile</h2>
+            <div class="form-group"><label class="form-label">Category</label><select id="newRole" class="form-control" onchange="handleRoleChange(this.value)"><option value="Desk">Desk</option><option value="Church Office">Church Office</option><option value="Zone">Zone</option></select></div>
+            <div id="zoneSubField" class="form-group" style="display:none"><label class="form-label">Zone Group</label><select id="newUserZone" class="form-control" onchange="populateCommunityUsernames(this.value)"></select></div>
             <div class="form-group" id="unameContainer"></div>
             <div class="form-group" id="passContainer"></div>
+            <div class="form-group" id="viewerField" style="display:none; flex-direction:row; align-items:center; gap:10px;">
+                <input type="checkbox" id="isViewer" style="width:20px; height:20px;">
+                <label class="form-label" style="margin:0">Viewer Account</label>
+            </div>
             <div style="display:flex; gap:10px; margin-top:20px;">
                 <button class="btn btn-primary" style="flex:1" onclick="submitUser()">Save Profile</button>
                 <button class="btn btn-secondary" style="flex:1" onclick="closeModal('addUserModal')">Cancel</button>
@@ -210,15 +215,19 @@
         </div>
     </div>
 
-    <div id="userManageModal" class="modal"><div class="modal-content" style="max-width: 600px;"><h2 style="margin-top:0">System Profiles</h2><div id="userListBody" style="max-height: 350px; overflow-y: auto; border:1px solid #eee; border-radius:8px;"></div><button class="btn btn-secondary" style="margin-top:20px; width:100%" onclick="closeModal('userManageModal')">Close</button></div></div>
+    <div id="userManageModal" class="modal"><div class="modal-content" style="max-width: 600px;"><h2 style="margin-top:0">System Profiles</h2><div id="userListBody" style="max-height: 400px; overflow-y: auto; border:1px solid #eee; border-radius:8px;"></div><button class="btn btn-secondary" style="margin-top:20px; width:100%" onclick="closeModal('userManageModal')">Close</button></div></div>
 
     <div id="editProfileModal" class="modal">
         <div class="modal-content">
             <h2 style="margin-top:0">Modify User</h2>
             <input type="hidden" id="editUserId">
-            <div class="form-group"><label class="form-label">Category (Tag)</label><select id="editProfileRole" class="form-control"><option value="Desk">Desk</option><option value="Church Office">Office</option><option value="Zone">Zone</option></select></div>
+            <div class="form-group"><label class="form-label">Category (Tag)</label><select id="editProfileRole" class="form-control"><option value="Desk">Desk</option><option value="Church Office">Church Office</option><option value="Zone">Zone</option></select></div>
             <div class="form-group"><label class="form-label">Username</label><input type="text" id="editProfileName" class="form-control"></div>
             <div class="form-group" style="margin-top:10px"><label class="form-label">Password</label><input type="text" id="editProfilePass" class="form-control"></div>
+            <div class="form-group" id="editViewerField" style="flex-direction:row; align-items:center; gap:10px; margin-top:10px;">
+                <input type="checkbox" id="editIsViewer" style="width:20px; height:20px;">
+                <label class="form-label" style="margin:0">Viewer Account</label>
+            </div>
             <div style="display:flex; gap:10px; margin-top:20px;">
                 <button class="btn btn-primary" style="flex:1" onclick="saveUserProfile()">Update</button>
                 <button class="btn btn-secondary" style="flex:1" onclick="closeModal('editProfileModal')">Cancel</button>
@@ -244,7 +253,7 @@
             'Other': ['External', 'Other', 'Unknown']
         };
 
-        var appState = { user: null, isAdmin: false, users: {}, entries: [], loginCat: null, loginZone: null, filtered: [] };
+        var appState = { user: null, isAdmin: false, isViewer: false, users: {}, entries: [], loginCat: null, loginZone: null, filtered: [] };
 
         function init() {
             fetch(API_URL + '/manage-users')
@@ -264,7 +273,7 @@
             var path = document.getElementById('selectionPath');
             grid.innerHTML = '';
             if (!appState.loginCat) {
-                path.innerText = "Step 1: Select Category";
+                path.innerText = "Select Category";
                 var root = [{id:'Zone', icon:'📍'}, {id:'Desk', icon:'🖥️'}, {id:'Church Office', icon:'⛪'}, {id:'Admin', icon:'🔐'}];
                 root.forEach(function(c) {
                     var card = document.createElement('div');
@@ -274,7 +283,7 @@
                     grid.appendChild(card);
                 });
             } else if (appState.loginCat === 'Zone' && !appState.loginZone) {
-                path.innerText = "Step 2: Select Zone Group";
+                path.innerText = "Select Zone Group";
                 ['1','2','3A','3B','4A','4B'].forEach(function(z) {
                     var card = document.createElement('div');
                     card.className = 'user-card';
@@ -284,9 +293,8 @@
                 });
                 addBack();
             } else {
-                path.innerText = "Step 3: Select ID Profile";
-                var usernames = Object.keys(appState.users);
-                usernames.forEach(function(uname) {
+                path.innerText = "Select ID Profile";
+                Object.keys(appState.users).forEach(function(uname) {
                     var u = appState.users[uname];
                     var match = (appState.loginCat === 'Zone') ? (u.role === 'Zone' && u.userZone === appState.loginZone) : (u.role === appState.loginCat);
                     if (match && !u.isAdmin) {
@@ -323,9 +331,9 @@
             var pass = document.getElementById('loginPass').value;
             var userObj = appState.users[target];
             if (target === 'admin' && pass === 'admin123') {
-                appState.user = 'admin'; appState.isAdmin = true; finishLogin();
+                appState.user = 'admin'; appState.isAdmin = true; appState.isViewer = false; finishLogin();
             } else if (userObj && userObj.password === pass) {
-                appState.user = target; appState.isAdmin = false;
+                appState.user = target; appState.isAdmin = false; appState.isViewer = userObj.isViewer || false;
                 closeModal('passwordModal');
                 if (pass === 'olep@2026') openModal('forcePassModal'); else finishLogin();
             } else {
@@ -337,15 +345,24 @@
             closeModal('passwordModal');
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('mainApp').style.display = 'block';
-            document.getElementById('currentUserDisplay').innerText = 'User: ' + appState.user;
+            document.getElementById('currentUserDisplay').innerText = 'Operator: ' + appState.user;
             document.getElementById('adminTab').style.display = appState.isAdmin ? 'block' : 'none';
-            document.getElementById('adminFilters').style.display = appState.isAdmin ? 'block' : 'none';
-            if (appState.isAdmin) { showPage('dataPage'); populateOperatorFilter(); } else { showPage('entryPage'); }
+            document.getElementById('adminFilters').style.display = (appState.isAdmin || appState.isViewer) ? 'block' : 'none';
+            
+            if (appState.isViewer) {
+                document.getElementById('tab-entry').style.display = 'none';
+                showPage('dataPage');
+            } else if (appState.isAdmin) {
+                showPage('dataPage');
+            } else {
+                showPage('entryPage');
+            }
+            if (appState.isAdmin || appState.isViewer) populateOperatorFilter();
             loadEntries();
         }
 
         function loadEntries() {
-            var scope = appState.isAdmin ? 'all' : appState.user;
+            var scope = (appState.isAdmin || appState.isViewer) ? 'all' : appState.user;
             fetch(API_URL + '/get-entries?userId=' + scope)
                 .then(function(res) { return res.json(); })
                 .then(function(result) {
@@ -360,11 +377,15 @@
             var filtered = appState.entries.filter(function(e) {
                 var searchMatch = e.name.toLowerCase().indexOf(s) > -1 || e.bandNo.toString().indexOf(s) > -1;
                 var dateMatch = !d || e.createdAt.indexOf(d) === 0;
-                if (appState.isAdmin) {
+                if (appState.isAdmin || appState.isViewer) {
                     var cat = document.getElementById('fCat').value;
+                    var zF = document.getElementById('fZone').value;
+                    var cF = document.getElementById('fComm').value;
                     var oper = document.getElementById('fOper').value;
                     var uObj = appState.users[e.userId] || {};
                     if (cat !== 'all' && uObj.role !== cat) return false;
+                    if (zF !== 'all' && e.zone !== zF) return false;
+                    if (cF !== 'all' && e.community !== cF) return false;
                     if (oper !== 'all' && e.userId !== oper) return false;
                 }
                 return searchMatch && dateMatch;
@@ -375,15 +396,16 @@
 
         function renderTable(data) {
             var tb = document.getElementById('tableBody');
-            document.getElementById('adminCol').style.display = appState.isAdmin ? 'table-cell' : 'none';
+            document.getElementById('adminCol').style.display = (appState.isAdmin || appState.isViewer) ? 'table-cell' : 'none';
             var sort = document.getElementById('sortBy').value;
             if (sort === 'date-desc') data.sort(function(a,b) { return new Date(b.createdAt) - new Date(a.createdAt); });
             if (sort === 'band-asc') data.sort(function(a,b) { return a.bandNo - b.bandNo; });
             if (sort === 'name-asc') data.sort(function(a,b) { return a.name.localeCompare(b.name); });
             var html = '';
             data.forEach(function(e) {
-                var opCell = appState.isAdmin ? '<td><span class="admin-badge">' + (appState.users[e.userId] ? appState.users[e.userId].role : '') + '</span><br>' + e.userId + '</td>' : '';
-                html += '<tr><td><strong>#'+e.bandNo+'</strong></td><td>'+e.name+'</td><td>'+e.zone+'</td><td>'+e.community+'</td><td>₹'+e.amount+'</td><td>'+e.createdAt.substr(0,10)+'</td>'+opCell+'<td><div style="display:flex; gap:5px;"><button class="btn btn-sm btn-secondary" onclick="openEdit(\''+e._id+'\','+e.bandNo+',\''+e.name+'\')">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteEntry(\''+e._id+'\')">Del</button></div></td></tr>';
+                var opCell = (appState.isAdmin || appState.isViewer) ? '<td><span class="admin-badge">' + (appState.users[e.userId] ? appState.users[e.userId].role : '') + '</span><br>' + e.userId + '</td>' : '';
+                var actionBtn = appState.isViewer ? '<td>-</td>' : '<td><div style="display:flex; gap:5px;"><button class="btn btn-sm btn-secondary" onclick="openEdit(\''+e._id+'\','+e.bandNo+',\''+e.name+'\')">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteEntry(\''+e._id+'\')">Del</button></div></td>';
+                html += '<tr><td><strong>#'+e.bandNo+'</strong></td><td>'+e.name+'</td><td>'+e.zone+'</td><td>'+e.community+'</td><td>₹'+e.amount+'</td><td>'+e.createdAt.substr(0,10)+'</td>'+opCell+actionBtn+'</tr>';
             });
             tb.innerHTML = html || '<tr><td colspan="8" style="text-align:center">No records.</td></tr>';
             document.getElementById('totalEntriesDisplay').innerText = data.length;
@@ -397,29 +419,51 @@
             var container = document.getElementById('bandsPreview');
             container.innerHTML = '';
             for(var i=0; i<q; i++) {
-                container.innerHTML += '<div class="band-block"><div class="band-num">'+(start+i)+'</div><div style="font-size:9px">BAND #</div></div>';
+                var block = document.createElement('div');
+                block.className = 'band-block';
+                block.innerHTML = '<input type="number" value="' + (start+i) + '" onchange="checkBandConflict(this)"><div class="band-block-label">BAND #</div>';
+                container.appendChild(block);
             }
             document.getElementById('calcTotal').innerText = (q * 50).toLocaleString();
             document.getElementById('qtySummary').innerText = q + ' bands × ₹50';
         }
 
+        function checkBandConflict(input) {
+            var val = parseInt(input.value);
+            // Local check
+            var allInputs = document.querySelectorAll('.band-block input');
+            var localMatch = 0;
+            for(var i=0; i<allInputs.length; i++) { if(parseInt(allInputs[i].value) === val) localMatch++; }
+            if(localMatch > 1) { showToast("Duplicate in current list!", true); return; }
+            
+            // DB check (against loaded records)
+            var exists = false;
+            for(var j=0; j<appState.entries.length; j++) {
+                if(appState.entries[j].bandNo === val) { exists = true; break; }
+            }
+            if(exists) showToast("Band #" + val + " already exists in DB!", true);
+        }
+
         document.getElementById('entryForm').onsubmit = function(e) {
             e.preventDefault();
-            var start = parseInt(document.getElementById('startBand').value);
+            if(appState.isViewer) return;
             var q = parseInt(document.getElementById('qty').value);
             if (!q) { showToast("Enter quantity", true); return; }
-            var bands = []; for(var i=0; i<q; i++) bands.push(start+i);
+            var inputs = document.querySelectorAll('.band-block input');
+            var bands = [];
+            for(var i=0; i<inputs.length; i++) { bands.push(parseInt(inputs[i].value)); }
+
             var payload = { userId: appState.user, name: document.getElementById('recName').value, zone: document.getElementById('recZone').value, community: document.getElementById('recComm').value, bands: bands, amountPerBand: 50 };
             fetch(API_URL + '/save-entry', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
                 .then(function(res) {
-                    if (res.status === 409) { showToast("Duplicate Band Number!", true); }
-                    else {
-                        showToast("Saved Successfully", false);
-                        document.getElementById('entryForm').reset();
-                        document.getElementById('startBand').value = start + q;
-                        updateBandPreview();
-                        loadEntries();
+                    if (res.status === 409) {
+                        return res.json().then(function(d){ showToast("Conflict: Band #" + d.duplicateBands[0].bandNo + " already assigned.", true); });
                     }
+                    showToast("Saved Successfully", false);
+                    document.getElementById('entryForm').reset();
+                    document.getElementById('startBand').value = Math.max.apply(null, bands) + 1;
+                    updateBandPreview();
+                    loadEntries();
                 });
         };
 
@@ -427,10 +471,12 @@
             var sub = document.getElementById('zoneSubField');
             var uCont = document.getElementById('unameContainer');
             var pCont = document.getElementById('passContainer');
+            var view = document.getElementById('viewerField');
+            view.style.display = (r === 'Church Office') ? 'flex' : 'none';
             if (r === 'Zone') {
                 sub.style.display = 'block';
                 document.getElementById('newUserZone').innerHTML = '<option value="">Select Zone</option>' + ['1','2','3A','3B','4A','4B'].map(function(v){return '<option value="'+v+'">'+v+'</option>';}).join('');
-                uCont.innerHTML = '<label class="form-label">ID / Community</label><select id="newUnameSelect" class="form-control"></select>';
+                uCont.innerHTML = '<label class="form-label">Community ID</label><select id="newUnameSelect" class="form-control"></select>';
                 pCont.innerHTML = '<p style="font-size:11px; color:#666; margin-top:10px;">Default password: olep@2026</p>';
             } else {
                 sub.style.display = 'none';
@@ -442,7 +488,7 @@
         function populateCommunityUsernames(z) {
             var s = document.getElementById('newUnameSelect');
             if(!s) return;
-            s.innerHTML = '<option value="">Select Profile</option>';
+            s.innerHTML = '<option value="">Select Community</option>';
             if(communitiesMap[z]) communitiesMap[z].forEach(function(c){ s.innerHTML += '<option value="'+c+'">'+c+'</option>'; });
         }
 
@@ -451,8 +497,9 @@
             var uname = (role === 'Zone') ? document.getElementById('newUnameSelect').value : document.getElementById('newUnameInput').value;
             var pass = (role === 'Zone') ? 'olep@2026' : document.getElementById('newPassInput').value;
             var z = document.getElementById('newUserZone').value;
-            if(!uname || !pass) { showToast("All fields required", true); return; }
-            var p = { username: uname, role: role, userZone: z || null, password: pass };
+            var isV = document.getElementById('isViewer').checked;
+            if(!uname || !pass) { showToast("Missing fields", true); return; }
+            var p = { username: uname, role: role, userZone: z || null, password: pass, isViewer: isV };
             fetch(API_URL + '/manage-users', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(p) })
                 .then(function() { showToast("User Created", false); closeModal('addUserModal'); init(); });
         }
@@ -467,7 +514,8 @@
                         if(u.isAdmin) return;
                         var row = document.createElement('div');
                         row.className = 'manage-row';
-                        row.innerHTML = '<div class="manage-info"><strong>' + u.username + '</strong> (' + u.role + ')</div><div class="manage-btns"><button class="btn btn-sm btn-secondary" onclick="openProfileEdit(\''+u._id+'\',\''+u.username+'\',\''+u.password+'\',\''+u.role+'\')">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteUser(\''+u.username+'\')">Del</button></div>';
+                        var label = u.isViewer ? ' [Viewer]' : '';
+                        row.innerHTML = '<div class="manage-info"><strong>' + u.username + '</strong> (' + u.role + ')' + label + '</div><div class="manage-btns"><button class="btn btn-sm btn-secondary" onclick="openProfileEdit(\''+u._id+'\',\''+u.username+'\',\''+u.password+'\',\''+u.role+'\','+u.isViewer+')">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteUser(\''+u.username+'\')">Del</button></div>';
                         body.appendChild(row);
                     });
                     openModal('userManageModal');
@@ -480,16 +528,18 @@
                 .then(function(){ showToast("Deleted Profile", false); renderUserList(); init(); });
         }
 
-        function openProfileEdit(id, n, p, r) {
+        function openProfileEdit(id, n, p, r, v) {
             document.getElementById('editUserId').value = id;
             document.getElementById('editProfileName').value = n;
             document.getElementById('editProfilePass').value = p;
             document.getElementById('editProfileRole').value = r;
+            document.getElementById('editIsViewer').checked = v;
+            document.getElementById('editViewerField').style.display = (r === 'Church Office') ? 'flex' : 'none';
             openModal('editProfileModal');
         }
 
         function saveUserProfile() {
-            var payload = { id: document.getElementById('editUserId').value, username: document.getElementById('editProfileName').value, password: document.getElementById('editProfilePass').value, role: document.getElementById('editProfileRole').value };
+            var payload = { id: document.getElementById('editUserId').value, username: document.getElementById('editProfileName').value, password: document.getElementById('editProfilePass').value, role: document.getElementById('editProfileRole').value, isViewer: document.getElementById('editIsViewer').checked };
             fetch(API_URL + '/manage-users', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
                 .then(function() { showToast("Profile Updated", false); closeModal('editProfileModal'); renderUserList(); init(); });
         }
@@ -498,6 +548,22 @@
             var s = document.getElementById('fOper');
             s.innerHTML = '<option value="all">All Operators</option>';
             Object.keys(appState.users).forEach(function(u) { if(!appState.users[u].isAdmin) s.innerHTML += '<option value="'+u+'">'+u+'</option>'; });
+        }
+
+        function handleAdminFilterChange() {
+            var cat = document.getElementById('fCat').value;
+            var s = document.getElementById('fOper');
+            s.innerHTML = '<option value="all">All</option>';
+            Object.keys(appState.users).forEach(function(u) { if (!appState.users[u].isAdmin && (cat === 'all' || appState.users[u].role === cat)) s.innerHTML += '<option value="'+u+'">'+u+'</option>'; });
+            filterTable();
+        }
+
+        function handleAdminFilterZoneChange() {
+            var z = document.getElementById('fZone').value;
+            var s = document.getElementById('fComm');
+            s.innerHTML = '<option value="all">All Communities</option>';
+            if(communitiesMap[z]) communitiesMap[z].forEach(function(c){ s.innerHTML += '<option value="'+c+'">'+c+'</option>'; });
+            filterTable();
         }
 
         function applyForceChange() {
@@ -518,8 +584,14 @@
         function openModal(id) { document.getElementById(id).classList.add('active'); }
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
         function showToast(m, err) { var t = document.getElementById('toast'); t.innerText = m; t.className = 'toast ' + (err ? 'error' : 'success'); t.style.display = 'block'; setTimeout(function(){ t.style.display = 'none'; }, 4000); }
-        function showPage(pId) { document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); }); document.getElementById(pId).classList.add('active'); document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); }); document.getElementById('tab-' + pId.replace('Page', '')).classList.add('active'); if(pId === 'dataPage') loadEntries(); }
-        function populateCommunities(id, z) { var s = document.getElementById(id); s.innerHTML = '<option value="">Select Profile</option>'; if(communitiesMap[z]) communitiesMap[z].forEach(function(c){ s.innerHTML += '<option value="'+c+'">'+c+'</option>'; }); }
+        function showPage(pId) {
+            document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+            document.getElementById(pId).classList.add('active');
+            document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+            document.getElementById('tab-' + pId.replace('Page', '')).classList.add('active');
+            if(pId === 'dataPage') loadEntries();
+        }
+        function populateCommunities(id, z) { var s = document.getElementById(id); s.innerHTML = '<option value="">Select Community</option>'; if(communitiesMap[z]) communitiesMap[z].forEach(function(c){ s.innerHTML += '<option value="'+c+'">'+c+'</option>'; }); }
         function openEdit(id, b, n) { document.getElementById('editEntryId').value = id; document.getElementById('eBand').value = b; document.getElementById('eName').value = n; openModal('editEntryModal'); }
         function submitEntryUpdate() { var p = { id: document.getElementById('editEntryId').value, newBandNo: parseInt(document.getElementById('eBand').value), name: document.getElementById('eName').value, amount: 50 }; fetch(API_URL + '/update-entry', { method: 'PUT', body: JSON.stringify(p), headers: {'Content-Type':'application/json'} }).then(function() { closeModal('editEntryModal'); loadEntries(); showToast("Updated", false); }); }
         function deleteEntry(id) { if(!confirm("Delete?")) return; fetch(API_URL + '/delete-entry?id=' + id, { method: 'DELETE' }).then(function() { loadEntries(); showToast("Deleted", false); }); }

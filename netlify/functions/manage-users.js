@@ -44,6 +44,7 @@ export default async (request) => {
             password: u.password,
             role: u.role || 'Desk',
             userZone: u.userZone || null,
+            isViewer: u.isViewer || false,
             createdAt: u.createdAt
           }))
         }),
@@ -53,18 +54,19 @@ export default async (request) => {
 
     if (request.method === 'POST') {
       const body = await request.json();
-      const { username, password, role, userZone } = body;
+      const { username, password, role, userZone, isViewer } = body;
 
       if (!username) return new Response(JSON.stringify({ success: false, error: 'Username required' }), { status: 400 });
 
       const existingUser = await usersCollection.findOne({ username });
-      if (existingUser) return new Response(JSON.stringify({ success: false, error: 'Username already exists' }), { status: 409 });
+      if (existingUser) return new Response(JSON.stringify({ success: false, error: 'Username exists' }), { status: 409 });
 
       const result = await usersCollection.insertOne({
         username,
         password: password || 'olep@2026',
         role: role || 'Desk',
         userZone: userZone || null,
+        isViewer: isViewer || false,
         isAdmin: false,
         createdAt: new Date()
       });
@@ -73,7 +75,7 @@ export default async (request) => {
 
     if (request.method === 'PUT') {
       const body = await request.json();
-      const { id, username, password, role, userZone } = body;
+      const { id, username, password, role, userZone, isViewer } = body;
 
       if (!id) return new Response(JSON.stringify({ success: false, error: 'ID required' }), { status: 400 });
 
@@ -82,6 +84,7 @@ export default async (request) => {
       if (password) updateFields.password = password;
       if (role) updateFields.role = role;
       if (userZone !== undefined) updateFields.userZone = userZone;
+      if (isViewer !== undefined) updateFields.isViewer = isViewer;
 
       await usersCollection.updateOne({ _id: new ObjectId(id) }, { $set: updateFields });
       return new Response(JSON.stringify({ success: true }), { status: 200 });
